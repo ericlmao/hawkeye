@@ -434,6 +434,8 @@ update them in the same change when you learn something durable or an entry stop
   other version. The jar is `build/libs/Hawkeye-<version>.jar`.
 - Jenkins (`ci.moonrise.gg`, `Jenkinsfile`) is the only build and test CI for pushes; GitHub Actions only
   runs `release.yml`.
+- The repository webhook (push events, JSON, no secret, same as MyCore's) posts to
+  `https://ci.moonrise.gg/github-webhook/`; set up 2026-11-21, the ping returned 200.
 - A release is: publish a GitHub release tagged `26.4` (`v26.4` also works). `release.yml` builds
   `-Pversion=26.4` (jar and `verifyPluginJar`, no tests: Jenkins ran them) and attaches `Hawkeye-26.4.jar`.
   Nothing to bump afterwards.
