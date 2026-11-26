@@ -1,9 +1,6 @@
 [IMG]https://raw.githubusercontent.com/ericlmao/hawkeye/main/assets/banner.png[/IMG]
-
 [B]Hawkeye[/B] records what happens on your server (blocks, containers, entities, chat and commands) and lets your staff look it up, inspect it and roll it back, on one server or across a whole network.
-
 It is a ground-up alternative to CoreProtect. Your staff keep the lookup parameters they already know, your CoreProtect history comes over with one command, and months of logs take megabytes instead of gigabytes.
-
 [TABLE]
 [TR][TH]Quick Links[/TH][TH][/TH][/TR]
 [TR][TD]Source code[/TD][TD][URL=https://github.com/ericlmao/hawkeye]github.com/ericlmao/hawkeye[/URL][/TD][/TR]
@@ -12,9 +9,7 @@ It is a ground-up alternative to CoreProtect. Your staff keep the lookup paramet
 [TR][TD]Development builds[/TD][TD][URL=https://ci.moonrise.gg/job/hawkeye/job/main/lastSuccessfulBuild/]ci.moonrise.gg[/URL][/TD][/TR]
 [TR][TD]Changelog[/TD][TD][URL=https://github.com/ericlmao/hawkeye/blob/main/CHANGELOG.md]CHANGELOG.md[/URL][/TD][/TR]
 [/TABLE]
-
 [HEADING=1]► At a Glance[/HEADING]
-
 [LIST]
 [*]Lookups, an inspector, and rollbacks with a preview, restores and undo
 [*]CoreProtect's parameters ([ICODE]u: t: r: a: i: e:[/ICODE]) and an optional [ICODE]/co[/ICODE] alias, so nobody has to relearn anything
@@ -27,13 +22,9 @@ It is a ground-up alternative to CoreProtect. Your staff keep the lookup paramet
 [*]Every message is a MiniMessage template you can change
 [*]Free and open source under GPL-3.0
 [/LIST]
-
 [HEADING=1]► Switching from CoreProtect[/HEADING]
-
 Install Hawkeye and run [ICODE]/he import coreprotect[/ICODE]. Hawkeye reads CoreProtect's own [ICODE]config.yml[/ICODE] to find the database, so you never type a host or password into a command. The import runs in the background while players stay online, reports its progress every 30 seconds, and can be cancelled and resumed. Your CoreProtect database is opened read-only and is never changed.
-
 Here is one CoreProtect SQLite database of 13.5 million rows (35 minutes of mass edits), before and after:
-
 [TABLE]
 [TR][TH][/TH][TH]CoreProtect[/TH][TH]Hawkeye after the import[/TH][/TR]
 [TR][TD]Database file[/TD][TD]1.18 GB[/TD][TD][B]3.9 MB[/B] (303 times smaller)[/TD][/TR]
@@ -41,18 +32,12 @@ Here is one CoreProtect SQLite database of 13.5 million rows (35 minutes of mass
 [TR][TD]Rows imported[/TD][TD][/TD][TD][B]All 13,509,310[/B], none skipped[/TD][/TR]
 [TR][TD]Import time[/TD][TD][/TD][TD][B]17.5 seconds[/B] (about 760,000 rows a second)[/TD][/TR]
 [/TABLE]
-
 How much you save depends on your history: mass edits pack best. On a real server's 1.4 billion events over 59 days, Hawkeye stores 1.085 bytes per event. Lookups, rollbacks and restores read the compressed archive directly, with nothing to unpack first.
-
 Add [ICODE]co[/ICODE] to [ICODE]root-aliases[/ICODE] in [ICODE]commands.yml[/ICODE] and your staff keep typing [ICODE]/co i[/ICODE], [ICODE]/co l u:Alex[/ICODE] and [ICODE]/co rb ...[/ICODE] after CoreProtect is gone.
-
 [SPOILER="What the import carries over, and what it can't"]
 [B]Carried over:[/B] block breaks, places and interactions with their full block states, container and item transactions (with names, enchantments and other components), sign text, kills, entity spawns, paintings, item frames, armour stands, end crystals, chat, commands, sessions, shearing, leashing, and which rows CoreProtect had already rolled back.
-
 [B]Not carried over:[/B] a killed entity's data (so an imported kill can't be respawned by a rollback), block-entity extras such as command-block commands and banner patterns, sign colours, glow and wax, CoreProtect's username log, rows from before 2025-01-01, and actions Hawkeye has no equivalent for. The final reply counts every skipped row by reason.
-
 [B]Good to know:[/B]
-
 [LIST]
 [*]Run it again after removing CoreProtect and only the new rows come over. No row is ever imported twice.
 [*]Import right after installing Hawkeye. If both plugins logged the same period, that period is stored twice.
@@ -60,17 +45,11 @@ Add [ICODE]co[/ICODE] to [ICODE]root-aliases[/ICODE] in [ICODE]commands.yml[/ICO
 [*]Import on a server running the Minecraft version CoreProtect wrote the history on, so item data reads back exactly.
 [/LIST]
 [/SPOILER]
-
 [HEADING=1]► Features[/HEADING]
-
 [HEADING=2]➥ Lookups and the inspector[/HEADING]
-
 Turn on the inspector with [ICODE]/he i[/ICODE]. Left-click a block to see its history, right-click a container to see who took and added what, and place a block to see what happened at that spot. Nothing is broken or placed while you inspect.
-
 Search the whole history with [ICODE]/he lookup u:Alex t:2h r:10 a:-block[/ICODE]. Click a location in the results to teleport there. Hover an item to see its name and enchantments, and click a written book to read it. New events never shift the pages you're reading, and [ICODE]#count[/ICODE] gives the exact number of matches.
-
 [HEADING=2]➥ Rollbacks you can trust[/HEADING]
-
 [LIST]
 [*][B]Preview first.[/B] [ICODE]#preview[/ICODE] shows a rollback to you alone; [ICODE]/he apply[/ICODE] or [ICODE]/he cancel[/ICODE] it.
 [*][B]Undo.[/B] [ICODE]/he undo[/ICODE] reverts your last rollback or restore.
@@ -78,9 +57,7 @@ Search the whole history with [ICODE]/he lookup u:Alex t:2h r:10 a:-block[/ICODE
 [*][B]Blame follows the cause.[/B] TNT lit by a player, arrows they shot and lava they poured are recorded under that player, so [ICODE]/he rollback u:Griefer t:1h[/ICODE] also undoes their TNT damage.
 [*][B]More than blocks.[/B] Rollbacks restore container items (also in minecarts, chest boats and pack animals), item frame and armour stand items, killed mobs and destroyed entities, and remove entities a player placed.
 [/LIST]
-
 [HEADING=2]➥ Built for networks[/HEADING]
-
 [LIST]
 [*][B]One shared database.[/B] Point every server at the same MySQL, MariaDB or PostgreSQL database and give each a unique name. Event ids never collide, and each server sees the others' events within one flush (half a second by default).
 [*][B]Network lookups and rollbacks.[/B] [ICODE]/he lookup s:#network u:Alex[/ICODE] searches every server, and [ICODE]/he rollback s:#network u:Alex t:1h r:#global[/ICODE] rolls Alex back everywhere. Network rollbacks run as durable jobs on each target server.
@@ -89,16 +66,11 @@ Search the whole history with [ICODE]/he lookup u:Alex t:2h r:10 a:-block[/ICODE
 [*][B]MultiPaper and shared worlds.[/B] Servers that share world files share their history too.
 [*][B]Configure once.[/B] Maintenance such as purging and archiving runs once per database, so every server can use the same configuration.
 [/LIST]
-
 [HEADING=2]➥ Storage that stays small and fast[/HEADING]
-
 Capturing an event never touches the database: one background thread writes events in batches. Recent events stay in a regular table. Once they settle, they are packed into immutable segments of 262,144 events, stored column by column and compressed with zstd. A lookup about one place reads only a segment's header and a small part of it, so a block's history comes back quickly even after months of logging.
-
 If the database goes down, events stay queued and are retried. On shutdown, anything that couldn't be written yet is saved to disk and written on the next start.
-
 [SPOILER="What is recorded"]
 Every category has its own switch in [ICODE]config.yml[/ICODE], and everything except hoppers is on by default.
-
 [TABLE]
 [TR][TH]Category[/TH][TH]Details[/TH][/TR]
 [TR][TD]Blocks[/TD][TD]Breaks (with container contents and sign text), places, multi-block places, buckets and waterlogging[/TD][/TR]
@@ -120,10 +92,8 @@ Every category has its own switch in [ICODE]config.yml[/ICODE], and everything e
 [TR][TD]Inventory snapshots[/TD][TD]A copy of a player's whole inventory when they join, leave, teleport and die[/TD][/TR]
 [/TABLE]
 [/SPOILER]
-
 [SPOILER="Commands"]
 The root command is [ICODE]/hawkeye[/ICODE], with the alias [ICODE]/he[/ICODE]. You can change every alias in [ICODE]commands.yml[/ICODE].
-
 [TABLE]
 [TR][TH]Command[/TH][TH]Permission[/TH][TH]What it does[/TH][/TR]
 [TR][TD][ICODE]/he inspect[/ICODE] ([ICODE]i[/ICODE])[/TD][TD][ICODE]hawkeye.inspect[/ICODE][/TD][TD]Turns the inspector on or off[/TD][/TR]
@@ -142,13 +112,10 @@ The root command is [ICODE]/hawkeye[/ICODE], with the alias [ICODE]/he[/ICODE]. 
 [TR][TD][ICODE]/he network[/ICODE][/TD][TD][ICODE]hawkeye.network[/ICODE][/TD][TD]Lists every server on the network and its heartbeat[/TD][/TR]
 [TR][TD][ICODE]/he reload[/ICODE][/TD][TD][ICODE]hawkeye.admin[/ICODE][/TD][TD]Reloads the configuration and messages[/TD][/TR]
 [/TABLE]
-
 All permissions default to operators, and [ICODE]hawkeye.*[/ICODE] grants them all.
 [/SPOILER]
-
 [SPOILER="Parameters"]
 Lookups, rollbacks, restores and purges take the same parameters as CoreProtect.
-
 [TABLE]
 [TR][TH]Parameter[/TH][TH]Meaning[/TH][TH]Examples[/TH][/TR]
 [TR][TD][ICODE]u:[/ICODE][/TD][TD]Players, or sources with [ICODE]#[/ICODE][/TD][TD][ICODE]u:Alex,Steve[/ICODE], [ICODE]u:#tnt[/ICODE][/TD][/TR]
@@ -161,15 +128,11 @@ Lookups, rollbacks, restores and purges take the same parameters as CoreProtect.
 [TR][TD][ICODE]#preview[/ICODE][/TD][TD]Show a rollback or restore to you only[/TD][TD][/TD][/TR]
 [TR][TD][ICODE]#count[/ICODE][/TD][TD]Count matches instead of listing them[/TD][TD][/TD][/TR]
 [/TABLE]
-
 CoreProtect's action names such as [ICODE]broke[/ICODE], [ICODE]placed[/ICODE] and [ICODE]login[/ICODE] work too. See the [URL=https://github.com/ericlmao/hawkeye#parameters]full list[/URL].
 [/SPOILER]
-
 [SPOILER="Configuration"]
 [ICODE]config.yml[/ICODE], [ICODE]messages.yml[/ICODE] and [ICODE]commands.yml[/ICODE] are written on first start with every default and a comment for each option. Options added in a newer version are filled in for you, and a file with a mistake keeps the previous configuration instead of breaking the plugin. [ICODE]/he reload[/ICODE] applies logging, lookup, rollback, purge and archive settings and every message.
-
 Database credentials come from environment variables by default ([ICODE]${HAWKEYE_DB_USERNAME}[/ICODE] and [ICODE]${HAWKEYE_DB_PASSWORD}[/ICODE]), and the Redis URI and connection parameters can use [ICODE]${NAME}[/ICODE] too, so no password has to sit in a config file. Hawkeye never logs them.
-
 [CODE=yaml]server:
   name: survival # unique per database
 storage:
@@ -183,32 +146,23 @@ purge:
 network:
   bus: REDIS # NONE (the default) polls the database instead
   redis-uri: redis://:${HAWKEYE_REDIS_PASSWORD}@localhost:6379[/CODE]
-
 See [URL=https://github.com/ericlmao/hawkeye#configuration]every option[/URL].
 [/SPOILER]
-
 [SPOILER="API for developers"]
 [CODE=java]HawkeyeApi hawkeye = Bukkit.getServicesManager().load(HawkeyeApi.class);
 hawkeye.logPlacement(Actor.player(player.getUniqueId(), player.getName()), replacedState, placedData);
 if (hawkeye.parse("u:Alex t:2h r:10", player.getLocation()) instanceof HawkeyeApi.QueryParse.Parsed parsed) {
     hawkeye.lookup(parsed.query(), 0, 20).thenAccept(events -> { /* newest first */ });
 }[/CODE]
-
 Record placements, removals, container moves and messages on behalf of a player or your own plugin, and run lookups and counts without blocking the caller.
 [/SPOILER]
-
 [HEADING=1]► Requirements[/HEADING]
-
 [LIST]
 [*]Paper or Folia 1.21.1 to 1.21.11, 26.1.2 or 26.3, all from the same jar, on the Java version your server needs (21 for 1.21.x, 25 for 26.x)
 [*]Nothing else for a single server
 [*]MySQL 8+, MariaDB 10.6+ or PostgreSQL 13+ to share a database between servers, and Redis (optional) for instant network jobs
 [/LIST]
-
 On first start, the server downloads Hawkeye's libraries through Paper's library loader, so the jar stays small. A few actions are recorded differently on older Minecraft versions; see [URL=https://github.com/ericlmao/hawkeye#server-versions]Server versions[/URL].
-
 [HEADING=1]► Support[/HEADING]
-
 Found a bug or have an idea? [URL=https://github.com/ericlmao/hawkeye/issues]Open an issue on GitHub[/URL].
-
 Hawkeye is free software under the [URL=https://github.com/ericlmao/hawkeye/blob/main/LICENSE]GNU General Public License v3.0[/URL]. It is made by Moonrise Studios.

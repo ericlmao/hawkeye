@@ -4,7 +4,8 @@
 Usage: scripts/builtbybit-description.py [MODRINTH.md] [BUILTBYBIT.bbcode]
 
 BuiltByBit runs XenForo, whose BBCode turns every newline into a line break, so wrapped Markdown
-paragraphs and list items are joined into single lines. Shields.io badges are left out (they link to
+paragraphs and list items are joined into single lines, and blocks are separated by a single newline
+(a blank line would add a visible empty line on top of the blocks' own margins). Shields.io badges are left out (they link to
 other stores), <details> blocks become spoilers and ## / ### headings become HEADING=1 / HEADING=2.
 Only the Markdown that MODRINTH.md uses is handled.
 """
@@ -39,8 +40,6 @@ def convert(markdown: str) -> str:
     i = 0
 
     def block(text: str) -> None:
-        if out and out[-1] != "" and not out[-1].startswith("[SPOILER="):
-            out.append("")
         out.append(text)
 
     while i < len(lines):
@@ -54,8 +53,6 @@ def convert(markdown: str) -> str:
             block(f'[SPOILER="{m.group(1)}"]')
             i += 1
         elif stripped == "</details>":
-            if out and out[-1] == "":
-                out.pop()
             out.append("[/SPOILER]")
             i += 1
         elif m := re.fullmatch(r"(#{2,3}) (.*)", stripped):
