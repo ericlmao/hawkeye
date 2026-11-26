@@ -711,8 +711,9 @@ update them in the same change when you learn something durable or an entry stop
   `scripts/builtbybit-description.py` and pasted into the store by hand (nothing uploads it). Regenerate it
   whenever `MODRINTH.md` changes. XenForo BBCode turns every newline into a line break, so the script joins
   wrapped paragraphs and list items; it drops the shields.io badges, turns `<details>` into `[SPOILER]` and
-  `##`/`###` into `[HEADING=1]`/`[HEADING=2]`, separates blocks with a single newline (a blank line shows as an
-  extra empty line on top of the blocks' own spacing), and handles only the Markdown `MODRINTH.md` uses.
+  `##`/`###` into `[HEADING=1]`/`[HEADING=2]`, writes a blank line only between two text paragraphs and before a heading
+  (a blank line shows as an empty line, and lists, tables, code and spoilers bring their own margins: the owner
+  found blank lines everywhere too loose and none at all too cramped), and handles only the Markdown `MODRINTH.md` uses.
 - The logo is the hawk (`assets/logo.png`, from the owner's image on 2026-11-26); `assets/icon.png` is it on a
   256x256 transparent square for the Modrinth project icon. `assets/banner.svg` (the logo embedded as a data
   URI) is the banner's source and `assets/banner.png` its 1600x480 export, which `MODRINTH.md` (absolute URL) and the top of `README.md` (relative `assets/banner.png`) show: a PNG

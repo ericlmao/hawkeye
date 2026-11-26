@@ -4,8 +4,9 @@
 Usage: scripts/builtbybit-description.py [MODRINTH.md] [BUILTBYBIT.bbcode]
 
 BuiltByBit runs XenForo, whose BBCode turns every newline into a line break, so wrapped Markdown
-paragraphs and list items are joined into single lines, and blocks are separated by a single newline
-(a blank line would add a visible empty line on top of the blocks' own margins). Shields.io badges are left out (they link to
+paragraphs and list items are joined into single lines. A blank line shows as an empty line, so one is
+written only between two text paragraphs and before a heading; lists, tables, code and spoilers follow
+on the next line because they bring their own margins. Shields.io badges are left out (they link to
 other stores), <details> blocks become spoilers and ## / ### headings become HEADING=1 / HEADING=2.
 Only the Markdown that MODRINTH.md uses is handled.
 """
@@ -39,8 +40,16 @@ def convert(markdown: str) -> str:
     out: list[str] = []
     i = 0
 
-    def block(text: str) -> None:
+    previous = ""
+
+    def block(text: str, kind: str) -> None:
+        # A blank line shows as an empty line. Headings, lists, tables, code and spoilers bring their
+        # own margins, so only text gets one: between two paragraphs and before a new section.
+        nonlocal previous
+        if (kind == "text" and previous == "text") or (kind == "heading" and previous not in ("", "heading")):
+            out.append("")
         out.append(text)
+        previous = kind
 
     while i < len(lines):
         line = lines[i]
@@ -50,14 +59,14 @@ def convert(markdown: str) -> str:
         elif stripped.startswith("[!["):
             i += 1  # badge
         elif m := re.fullmatch(r"<summary>(.*)</summary>", stripped):
-            block(f'[SPOILER="{m.group(1)}"]')
+            block(f'[SPOILER="{m.group(1)}"]', "open")
             i += 1
         elif stripped == "</details>":
-            out.append("[/SPOILER]")
+            block("[/SPOILER]", "block")
             i += 1
         elif m := re.fullmatch(r"(#{2,3}) (.*)", stripped):
             level = len(m.group(1)) - 1
-            block(f"[HEADING={level}]{inline(m.group(2))}[/HEADING]")
+            block(f"[HEADING={level}]{inline(m.group(2))}[/HEADING]", "heading")
             i += 1
         elif m := re.fullmatch(r"```(\w*)", stripped):
             i += 1
@@ -67,7 +76,7 @@ def convert(markdown: str) -> str:
                 i += 1
             i += 1
             tag = f"[CODE={m.group(1)}]" if m.group(1) else "[CODE]"
-            block(tag + "\n".join(body) + "[/CODE]")
+            block(tag + "\n".join(body) + "[/CODE]", "block")
         elif stripped.startswith("|"):
             rows = []
             while i < len(lines) and lines[i].strip().startswith("|"):
@@ -78,7 +87,7 @@ def convert(markdown: str) -> str:
             for row in rows[2:]:
                 table.append("[TR]" + "".join(f"[TD]{c}[/TD]" for c in cells(row)) + "[/TR]")
             table.append("[/TABLE]")
-            block("\n".join(table))
+            block("\n".join(table), "block")
         elif stripped.startswith("- "):
             items: list[str] = []
             while i < len(lines) and (lines[i].startswith("- ") or lines[i].startswith("  ")):
@@ -87,7 +96,7 @@ def convert(markdown: str) -> str:
                 else:
                     items[-1] += " " + lines[i].strip()
                 i += 1
-            block("[LIST]\n" + "\n".join(f"[*]{inline(item)}" for item in items) + "\n[/LIST]")
+            block("[LIST]\n" + "\n".join(f"[*]{inline(item)}" for item in items) + "\n[/LIST]", "block")
         else:
             paragraph = []
             while i < len(lines) and lines[i].strip() and not re.match(
@@ -95,7 +104,7 @@ def convert(markdown: str) -> str:
             ):
                 paragraph.append(lines[i].strip())
                 i += 1
-            block(inline(" ".join(paragraph)))
+            block(inline(" ".join(paragraph)), "text")
     return "\n".join(out) + "\n"
 
 
