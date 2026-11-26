@@ -707,6 +707,11 @@ update them in the same change when you learn something durable or an entry stop
 - `MODRINTH.md` is the Modrinth project description (Modrinth slug `hawkeye`, free on 2026-11-26). Links and
   images in it are absolute (GitHub, `raw.githubusercontent.com/.../main/assets/banner.png`): Modrinth cannot
   resolve repository paths.
+- `BUILTBYBIT.bbcode` is the BuiltByBit resource description, generated from `MODRINTH.md` by
+  `scripts/builtbybit-description.py` and pasted into the store by hand (nothing uploads it). Regenerate it
+  whenever `MODRINTH.md` changes. XenForo BBCode turns every newline into a line break, so the script joins
+  wrapped paragraphs and list items; it drops the shields.io badges, turns `<details>` into `[SPOILER]` and
+  `##`/`###` into `[HEADING=1]`/`[HEADING=2]`, and handles only the Markdown `MODRINTH.md` uses.
 - The logo is the hawk (`assets/logo.png`, from the owner's image on 2026-11-26); `assets/icon.png` is it on a
   256x256 transparent square for the Modrinth project icon. `assets/banner.svg` (the logo embedded as a data
   URI) is the banner's source and `assets/banner.png` its 1600x480 export, which `MODRINTH.md` (absolute URL) and the top of `README.md` (relative `assets/banner.png`) show: a PNG
