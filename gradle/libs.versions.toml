@@ -3,10 +3,10 @@ shadow = "9.6.1"
 # Uploads release and development jars to Modrinth (`./gradlew modrinth`).
 modrinthMinotaur = "2.10.0"
 # The newest Paper API: the newerApi source set and the tests compile against it.
-paper = "26.3.build.249-stable"
+paper = "26.3.build.258-stable"
 # The oldest supported Paper API: main compiles against it, and paper-plugin.yml's api-version names it
 # (verifyPluginJar checks both agree). Raising it drops support for the servers below it.
-paperOldest = "1.21.1-R0.1-SNAPSHOT"
+paperOldest = "26.3.build.258-stable"
 lombok = "1.18.48"
 jetbrainsAnnotations = "26.1.0"
 
@@ -39,7 +39,7 @@ log4jTest = "2.26.0"
 # Testing
 junitJupiter = "6.1.3"
 junitPlatformLauncher = "6.1.3"
-mockbukkit = "4.122.0"
+mockbukkit = "4.124.0"
 archunit = "1.5.1"
 
 [libraries]
