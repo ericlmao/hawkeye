@@ -1,5 +1,6 @@
 package gg.moonrise.hawkeye.core.scheduler;
 
+import gg.moonrise.hawkeye.util.log.LogMarkers;
 import gg.moonrise.moss.spring.SpringComponent;
 import jakarta.annotation.PreDestroy;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -77,7 +78,7 @@ public final class HawkeyeExecutors {
             Thread thread = new Thread(runnable, prefix + "-" + counter.incrementAndGet());
             thread.setDaemon(true);
             thread.setUncaughtExceptionHandler((failed, error) ->
-                    log.error("Uncaught exception on {}", failed.getName(), error));
+                    log.error(LogMarkers.CRASH, "Uncaught exception on {}", failed.getName(), error));
             return thread;
         };
     }

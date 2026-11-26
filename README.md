@@ -26,6 +26,7 @@ history, and logs that take megabytes instead of gigabytes.
 - [Parameters](#parameters)
 - [What is recorded](#what-is-recorded)
 - [Configuration](#configuration)
+- [Error and crash files](#error-and-crash-files)
 - [Running several servers](#running-several-servers)
 - [Importing from CoreProtect](#importing-from-coreprotect)
 - [Server versions](#server-versions)
@@ -97,9 +98,11 @@ The root command is `/hawkeye`, alias `/he`. Aliases in brackets can be changed 
 | `/he status` | `hawkeye.admin` | Queue, writer and database health |
 | `/he network` | `hawkeye.network` | Every server on the network and its heartbeat |
 | `/he reload` | `hawkeye.admin` | Reloads `config.yml` and `messages.yml` |
+| `/he errors` | `hawkeye.errors` | Lists the [error and crash files](#error-and-crash-files) waiting for review |
+| `/he errors reviewed` | `hawkeye.errors` | Marks them reviewed (moves them to `reviewed/`) |
 
 All permissions default to operators, and `hawkeye.*` grants them all. `s:` in any command also needs
-`hawkeye.network`.
+`hawkeye.network`. Players with `hawkeye.errors` are also told on join when error or crash files wait.
 
 ### ➥ Inspector
 
@@ -204,6 +207,7 @@ reply tells you).
 | `purge` | `retention-days` (0 keeps everything), `player-minimum-days` |
 | `network` | `bus` (`NONE` or `REDIS`), `redis-uri`, `poll-interval-seconds`, `shards` |
 | `archive` | `enabled`, `segment-events` (262144), `settle-seconds` (60), `after-hours` (24), `interval-minutes` (1) |
+| `error-reports` | `webhook-url` (a Discord webhook, empty for none), `webhook-errors`, `webhook-crashes`, `join-notice` |
 
 Every player-facing message is a MiniMessage template in `messages.yml`.
 
@@ -234,6 +238,52 @@ subcommand-aliases:
 
 An alias needs the same permission as its command, takes a restart, and may use up to 32 of `a-z`, `0-9`,
 `_` and `-`. A `/co` alias is only reliable once CoreProtect itself is removed.
+
+## ► Error and crash files
+
+Hawkeye shows each warning or error **once** in the console, as one line without the stack trace that
+names the file holding the details:
+
+```
+[14:03:05 ERROR]: [gg.moonrise.hawkeye.core.queue.event.EventWriter] The writer loop failed (attempt 1), retrying: SQLException: database is locked (details in plugins/Hawkeye/errors/Error-2026-11-25-14-03.txt)
+```
+
+The stack trace and every repeat go only to that file, so a database that is down or a listener that fails
+on every event no longer floods the console or `logs/latest.log`.
+
+| File | Holds |
+|---|---|
+| `plugins/Hawkeye/errors/Error-<year>-<month>-<day>-<hour>-<minute>.txt` | Warnings and errors while Hawkeye runs |
+| `plugins/Hawkeye/crash/Crash-<year>-<month>-<day>-<hour>-<minute>.txt` | Hawkeye could not load or enable, or one of its threads stopped |
+
+- Every file starts with the Minecraft version, the server type (Paper, Folia, Purpur, Leaf, ...), Java and
+  the plugin list: attach it when you report a problem.
+- Problems first seen in the same minute share a file. Repeats go into the file of the first one: one line
+  each for the first 100, then one line a minute that counts them.
+- "Once" means once per server start. A Hawkeye that cannot start writes a crash file, prints one line and
+  disables itself.
+
+### ➥ Review
+
+Players with `hawkeye.errors` (operators by default) see on join how many files wait, for example
+`2 crash report(s) and 1 error report(s) wait to be reviewed: /hawkeye errors`. `/he errors` lists them with
+the first problem of each, and `/he errors reviewed` moves them to `errors/reviewed/` and `crash/reviewed/`.
+Repeats of a reviewed problem go to its reviewed file; only a new problem waits again. Set
+`error-reports.join-notice: false` to turn the notice off.
+
+### ➥ Discord webhook
+
+```yaml
+error-reports:
+  webhook-url: '${HAWKEYE_WEBHOOK_URL}'   # or the URL itself; empty for none
+  webhook-errors: true
+  webhook-crashes: true
+```
+
+The first time of every problem (never its repeats) is posted to the channel with its file attached. The URL
+holds the webhook's token: keep it in an environment variable, Hawkeye never logs it. Mentions are off, so
+text from the game cannot ping anyone. A failed start is posted too, and `/he reload` applies a change at
+once.
 
 ## ► Running several servers
 

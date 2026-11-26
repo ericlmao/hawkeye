@@ -1,5 +1,6 @@
 package gg.moonrise.hawkeye.core.service.capture.text;
 
+import gg.moonrise.hawkeye.util.text.TextCuts;
 import java.util.regex.Pattern;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
@@ -37,17 +38,13 @@ public final class PlainText {
     }
 
     /**
-     * A text cut to a length, never between the two halves of a surrogate pair.
+     * A text cut to a length, never between the two halves of a surrogate pair ({@link TextCuts#head}).
      *
      * @param text the text
      * @param max  the most characters to keep
      * @return the text, or its first {@code max} characters (one fewer when that would split a pair)
      */
     public static @NotNull String capped(@NotNull String text, int max) {
-        if (text.length() <= max) {
-            return text;
-        }
-        int end = max > 0 && Character.isHighSurrogate(text.charAt(max - 1)) ? max - 1 : max;
-        return text.substring(0, end);
+        return TextCuts.head(text, max);
     }
 }

@@ -32,7 +32,8 @@ public class PaperPluginYmlTest {
     public void declaresEveryCommandPermission() throws IOException {
         Map<String, Map<String, Object>> permissions = (Map<String, Map<String, Object>>) load().get("permissions");
         for (String node : List.of(Permissions.HELP, Permissions.INSPECT, Permissions.LOOKUP, Permissions.TELEPORT,
-                Permissions.ROLLBACK, Permissions.PURGE, Permissions.IMPORT, Permissions.NETWORK, Permissions.ADMIN)) {
+                Permissions.ROLLBACK, Permissions.PURGE, Permissions.IMPORT, Permissions.NETWORK, Permissions.ADMIN,
+                Permissions.ERRORS)) {
             Map<String, Object> permission = permissions.get(node);
             assertNotNull(permission, node);
             assertEquals("op", permission.get("default"), node);

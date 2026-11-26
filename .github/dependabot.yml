@@ -18,6 +18,9 @@ updates:
       - dependency-name: org.incendo:cloud-paper
       - dependency-name: org.incendo:cloud-annotations
       - dependency-name: de.exlll:configlib-yaml
+      # log4j is the server's: main compiles against the log4j-core of the oldest supported Paper (1.21.1), the
+      # tests against the one paper-api 26.3 brings. Both move with Paper, not on their own.
+      - dependency-name: org.apache.logging.log4j:*
 
   - package-ecosystem: github-actions
     directory: /

@@ -24,7 +24,7 @@ public class ArchitectureTest {
 
     private static final String[] BACKEND = {ROOT + ".core.repository..", ROOT + ".core.sql..",
             ROOT + ".core.time..", ROOT + ".core.storage..", ROOT + ".core.queue..", ROOT + ".core.scheduler..",
-            ROOT + ".core.bus.."};
+            ROOT + ".core.bus..", ROOT + ".core.diagnostic.."};
 
     /** Backend value types a service may hold because they carry a backend handle (a database). */
     private static final Set<String> BACKEND_HANDLES = Set.of(

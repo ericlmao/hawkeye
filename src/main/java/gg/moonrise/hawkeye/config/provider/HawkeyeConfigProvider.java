@@ -44,8 +44,8 @@ public final class HawkeyeConfigProvider implements Reloadable {
     public static final String COMMANDS_FILE = "commands.yml";
 
     private static final String CONFIG_HEADER = """
-            Hawkeye configuration. /hawkeye reload applies the logging, lookup, rollback and purge sections;
-            server, storage, writer and network changes need a restart.
+            Hawkeye configuration. /hawkeye reload applies the logging, lookup, rollback, purge, archive and
+            error-reports sections; server, storage, writer and network changes need a restart.
             Database and Redis credentials are best read from environment variables: ${NAME} in a value.
             """;
 
@@ -115,9 +115,7 @@ public final class HawkeyeConfigProvider implements Reloadable {
     public @NotNull ReloadResult reloadConfig() {
         Path folder = plugin.getDataPath();
         try {
-            Files.createDirectories(folder);
-            HawkeyeConfig config = Configuration.config(folder.resolve(CONFIG_FILE).toFile(), HawkeyeConfig.class,
-                    builder -> properties(builder, CONFIG_HEADER)).get();
+            HawkeyeConfig config = readConfig(folder);
             MessagesConfig messages = Configuration.config(folder.resolve(MESSAGES_FILE).toFile(),
                     MessagesConfig.class, builder -> properties(builder, MESSAGES_HEADER)).get();
             CommandsConfig commands = Configuration.config(folder.resolve(COMMANDS_FILE).toFile(),
@@ -140,6 +138,23 @@ public final class HawkeyeConfigProvider implements Reloadable {
 
     private @NotNull Snapshot snapshot() {
         return Objects.requireNonNull(current.get(), "the configuration is read in @PostConstruct");
+    }
+
+    /**
+     * Reads {@code config.yml} as {@link #reloadConfig()} does (writing defaults and missing keys back), without
+     * validating it. The error log reads its webhook this way before the Spring context exists, so a context that
+     * fails to start still reaches the webhook.
+     *
+     * @param folder the plugin folder
+     * @return the settings in the file
+     * @throws IOException      when the folder cannot be created
+     * @throws RuntimeException when the file is not valid YAML or holds a wrong type (ConfigLib's exceptions;
+     *                          their messages may quote the file, so give them to {@link ConfigFailures})
+     */
+    public static @NotNull HawkeyeConfig readConfig(@NotNull Path folder) throws IOException {
+        Files.createDirectories(folder);
+        return Configuration.config(folder.resolve(CONFIG_FILE).toFile(), HawkeyeConfig.class,
+                builder -> properties(builder, CONFIG_HEADER)).get();
     }
 
     private static @NotNull List<String> restartOnly(@NotNull Snapshot previous, @NotNull Snapshot next) {

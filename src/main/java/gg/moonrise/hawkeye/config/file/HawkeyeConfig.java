@@ -52,6 +52,10 @@ public final class HawkeyeConfig {
     @Comment("The packed archive for old events.")
     private ArchiveSettings archive = new ArchiveSettings();
 
+    @Comment({"Error and crash files (plugins/Hawkeye/errors and crash): a Discord webhook and the notice staff get",
+            "on join. Every key takes effect on /hawkeye reload."})
+    private ErrorReportSettings errorReports = new ErrorReportSettings();
+
     /**
      * Problems that make this configuration unusable, an unset environment variable among them.
      *
@@ -68,6 +72,7 @@ public final class HawkeyeConfig {
         problems.addAll(purge.problems());
         problems.addAll(network.problems(environment));
         problems.addAll(archive.problems());
+        problems.addAll(errorReports.problems(environment));
         return problems;
     }
 }

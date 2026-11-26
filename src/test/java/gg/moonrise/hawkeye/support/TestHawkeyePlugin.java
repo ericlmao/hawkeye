@@ -8,8 +8,9 @@ import org.springframework.context.annotation.AnnotationConfigApplicationContext
  * {@link HawkeyePlugin} for MockBukkit. MockBukkit 4.119 loads plugins through a ByteBuddy subclass
  * named {@code <SimpleName>Proxy} in the unnamed package, and Moss scans
  * {@code getClass().getPackageName()} for beans, which would then be the whole class path. This
- * subclass does exactly what {@code MossPaper.onLoad} does, with the real base package; enabling,
- * listener registration and disabling stay Moss's and plugin-engine's own code.
+ * subclass does exactly what {@code MossPaper.onLoad} does, with the real base package; the error log,
+ * enabling, listener registration and disabling stay {@link HawkeyePlugin}'s, Moss's and plugin-engine's own
+ * code.
  */
 public class TestHawkeyePlugin extends HawkeyePlugin {
 
@@ -17,7 +18,7 @@ public class TestHawkeyePlugin extends HawkeyePlugin {
     public static final String BASE_PACKAGE = HawkeyePlugin.class.getPackageName();
 
     @Override
-    public void onLoad() {
+    protected void startContext() {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
         CONTEXT = context;
         context.setClassLoader(TestHawkeyePlugin.class.getClassLoader());

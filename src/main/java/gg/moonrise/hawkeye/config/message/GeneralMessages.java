@@ -28,7 +28,8 @@ public final class GeneralMessages {
             "<white>/he purge t:<age></white> <dark_gray>-</dark_gray> <gray>delete old data</gray>",
             "<white>/he import coreprotect [source]</white> <dark_gray>-</dark_gray> <gray>import CoreProtect "
                     + "history</gray>",
-            "<white>/he status</white> <dark_gray>-</dark_gray> <gray>queue, storage and network health</gray>");
+            "<white>/he status</white> <dark_gray>-</dark_gray> <gray>queue, storage and network health</gray>",
+            "<white>/he errors</white> <dark_gray>-</dark_gray> <gray>error and crash reports to review</gray>");
 
     @Comment("Reply to /hawkeye reload when every file was read.")
     private String reloaded = "<green>Hawkeye configuration reloaded.";

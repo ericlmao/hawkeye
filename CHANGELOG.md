@@ -6,6 +6,38 @@ second release in a quarter).
 
 ## [Unreleased]
 
+### Added
+
+- Error and crash files: each of Hawkeye's warnings and errors is shown once in the console, as one line without
+  its stack trace that names its file; the stack trace and every repeat are written to
+  `plugins/Hawkeye/errors/Error-<year>-<month>-<day>-<hour>-<minute>.txt`. A failure to load or enable (the
+  Spring context, a bean, a listener) and a Hawkeye thread that stops are written to
+  `plugins/Hawkeye/crash/Crash-<...>.txt` instead, and a plugin that cannot start disables itself instead of
+  throwing. Every file starts with the Minecraft version, the server type (Paper, Folia, Purpur, Leaf, Gale,
+  Pufferfish or Spigot, told apart by their classes), the server's name and version, Java, the operating system,
+  Hawkeye's version and the plugin list. Problems first logged in the same minute share a file; a repeat goes
+  into the file of its first time, one line each for the first 100, then one line a minute that counts them.
+- Error and crash review: players with the new `hawkeye.errors` permission (operators by default) are told on
+  join how many files wait to be reviewed (`error-reports.join-notice`); `/hawkeye errors` lists them with the
+  first problem of each and `/hawkeye errors reviewed` moves them to `errors/reviewed/` and `crash/reviewed/`
+  (later repeats of a reviewed problem go to its reviewed file). New `messages.yml` section `errors`.
+- Discord webhook for errors and crashes: `error-reports.webhook-url` (empty by default; `${NAME}` reads an
+  environment variable) gets the first time of every problem with its file attached, `webhook-errors` and
+  `webhook-crashes` choose what is sent. Repeats are never sent, mentions are off, the URL is never logged, and
+  the webhook is read before Hawkeye starts so a failed start is posted too.
+
+### Changed
+
+- The console and `logs/latest.log` no longer hold Hawkeye's stack traces or repeated warnings (a database or
+  Redis that is down, HikariCP's warnings about Hawkeye's pools, a failing listener): they are in
+  `plugins/Hawkeye/errors` and `crash`. `scripts/smoke/run.py` also fails on an ERROR of Hawkeye's class loggers,
+  not only of the `Hawkeye` logger.
+
+### Tests
+
+- The tests log through SLF4J into a real log4j-core (`src/test/resources/log4j2-test.xml`: WARN and above, printed
+  nowhere), as plugins do on a server, so the error log's filter is tested where it runs.
+
 ## [26.4] - 2026-11-26
 
 ### Added

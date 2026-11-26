@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The tests log through SLF4J into a real log4j-core, as plugins do on a Paper server, so the error log's filter
+  (core.diagnostic.Log4jCapture) sees what Hawkeye logs. WARN and above reach the root logger, where that filter
+  sits; nothing is printed (tests attach their own appender to look at the console lines).
+-->
+<Configuration status="WARN">
+    <Appenders>
+        <Null name="Null"/>
+    </Appenders>
+    <Loggers>
+        <Root level="warn">
+            <AppenderRef ref="Null"/>
+        </Root>
+    </Loggers>
+</Configuration>

@@ -131,6 +131,19 @@ header and a small part of it, so a block's history comes back quickly even afte
 If the database goes down, events stay queued and are retried. On shutdown, anything that couldn't be
 written yet is saved to disk and written on the next start.
 
+### ➥ A quiet console
+
+Hawkeye shows each of its warnings and errors once, as one line that names a text file. The stack trace
+and every repeat go into that file in `plugins/Hawkeye/errors`, so a database that is down no longer
+floods your console. If Hawkeye can't start, you get a crash file in `plugins/Hawkeye/crash` and one
+console line. Each file starts with your server version, server type, Java version and plugin list, so
+you can attach it to a bug report as it is.
+
+- Staff with `hawkeye.errors` are told on join when files wait. `/he errors` lists them, and
+  `/he errors reviewed` moves them out of the way.
+- Set `error-reports.webhook-url` to a Discord webhook to get the first time of every problem in a
+  channel, with its file attached. Repeats are never sent, and mentions are turned off.
+
 <details>
 <summary>What is recorded</summary>
 
@@ -180,8 +193,11 @@ The root command is `/hawkeye`, with the alias `/he`. You can change every alias
 | `/he status` | `hawkeye.admin` | Shows queue, writer and database health |
 | `/he network` | `hawkeye.network` | Lists every server on the network and its heartbeat |
 | `/he reload` | `hawkeye.admin` | Reloads the configuration and messages |
+| `/he errors` | `hawkeye.errors` | Lists the error and crash files waiting for review |
+| `/he errors reviewed` | `hawkeye.errors` | Marks them reviewed |
 
-All permissions default to operators, and `hawkeye.*` grants them all.
+All permissions default to operators, and `hawkeye.*` grants them all. Players with `hawkeye.errors` are
+also told on join when error or crash files wait for review.
 
 </details>
 
@@ -213,7 +229,7 @@ CoreProtect's action names such as `broke`, `placed` and `login` work too. See t
 `config.yml`, `messages.yml` and `commands.yml` are written on first start with every default and a
 comment for each option. Options added in a newer version are filled in for you, and a file with a
 mistake keeps the previous configuration instead of breaking the plugin. `/he reload` applies logging,
-lookup, rollback, purge and archive settings and every message.
+lookup, rollback, purge, archive and error report settings and every message.
 
 Database credentials come from environment variables by default (`${HAWKEYE_DB_USERNAME}` and
 `${HAWKEYE_DB_PASSWORD}`), and the Redis URI and connection parameters can use `${NAME}` too, so no

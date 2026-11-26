@@ -29,6 +29,12 @@ import org.jetbrains.annotations.NotNull;
 @RequiredArgsConstructor
 public final class DatabaseFactory {
 
+    /**
+     * What every Hawkeye pool's name starts with ({@code Hawkeye-home}). HikariCP starts its log lines with the
+     * pool name, which is how the error log tells Hawkeye's pools from other plugins'.
+     */
+    public static final String POOL_PREFIX = "Hawkeye-";
+
     private final @NotNull Environment environment;
 
     /**
@@ -59,7 +65,7 @@ public final class DatabaseFactory {
     public @NotNull HikariConfig config(@NotNull String shard, @NotNull StorageSettings settings,
             @NotNull Path dataFolder) {
         HikariConfig config = new HikariConfig();
-        config.setPoolName("Hawkeye-" + shard);
+        config.setPoolName(POOL_PREFIX + shard);
         config.setMaximumPoolSize(settings.type() == StorageType.SQLITE ? Math.min(settings.poolSize(), 4)
                 : settings.poolSize());
         config.setMinimumIdle(1);

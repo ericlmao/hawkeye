@@ -75,6 +75,8 @@ dependencies {
     compileOnly(libs.paperOldest)
     // Hawkeye's own runtime libraries: resolved by HawkeyePluginLoader at server start, never shaded.
     compileOnly(libs.bundles.hawkeyeRuntime)
+    // The error log's log4j filter: the server's log4j-core, as the oldest supported Paper ships it.
+    compileOnly(libs.log4jCore)
 
     "newerApiCompileOnly"(libs.paper)
     "newerApiCompileOnly"(libs.engine)
@@ -96,6 +98,9 @@ dependencies {
     testImplementation(libs.bundles.engineRuntime)
     testImplementation(libs.bundles.hawkeyeRuntime)
     testImplementation(libs.mockbukkit)
+    // A real log4j behind SLF4J, so the tests log through the error log's filter as a server does.
+    testImplementation(libs.log4jCoreTest)
+    testRuntimeOnly(libs.log4jSlf4jTest)
     testImplementation(libs.archunit)
     testImplementation(libs.junitJupiter)
     testRuntimeOnly(libs.junitPlatformLauncher)
@@ -104,7 +109,8 @@ dependencies {
 tasks {
     withType<JavaCompile>().configureEach {
         options.encoding = "UTF-8"
-        options.compilerArgs.add("-Xlint:all,-processing")
+        // -classfile: log4j-core's class files carry SpotBugs and bnd annotations whose classes it does not ship.
+        options.compilerArgs.add("-Xlint:all,-processing,-classfile")
     }
     compileJava {
         options.release.set(pluginRelease)

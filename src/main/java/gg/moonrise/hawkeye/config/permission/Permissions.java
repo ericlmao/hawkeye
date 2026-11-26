@@ -39,6 +39,9 @@ public final class Permissions {
     /** {@code /hawkeye reload} and {@code /hawkeye status}. */
     public static final String ADMIN = "hawkeye.admin";
 
+    /** {@code /hawkeye errors} and the notice on join about error and crash files waiting for review. */
+    public static final String ERRORS = "hawkeye.errors";
+
     private Permissions() {
     }
 }

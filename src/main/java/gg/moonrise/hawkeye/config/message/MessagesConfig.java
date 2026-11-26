@@ -39,4 +39,7 @@ public final class MessagesConfig {
 
     @Comment("/hawkeye status and /hawkeye network.")
     private StatusMessages status = new StatusMessages();
+
+    @Comment("/hawkeye errors and the notice on join about error and crash files.")
+    private ErrorMessages errors = new ErrorMessages();
 }

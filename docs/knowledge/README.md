@@ -414,6 +414,91 @@ update them in the same change when you learn something durable or an entry stop
   `generator-settings`; the world is the classic flat one all the same. CoreProtect 25.0 defaults to
   `database-type: duckdb` (`database.duckdb`); `sqlite` gives the `database.db` the import scenarios use.
 
+## Error log facts (verified 2026-11-25)
+
+- Paper's `log4j2.xml` (1.21.1 and 26.3 server jars): the root logger is `info` with a `MarkerFilter` for
+  `NETWORK_PACKETS` and one `Async` appender (1.21.1 routes it through two `Rewrite` appenders, 26.3 straight to the
+  console and `latest.log`); `log4j2.component.properties` sets only `log4j.skipJansi`, so there are no async
+  loggers. A filter on the root `LoggerConfig` therefore runs on the logging thread before any appender and can
+  drop an event and log a replacement; `core.diagnostic.Log4jCapture` does that, and log4j combines it with the
+  marker filter into a `CompositeFilter`. Loggers print as `[%logger]` (the class name for `@Slf4j`, `Hawkeye` for
+  the plugin's own logger, which Paper uses for "Could not pass event ..." and task failures).
+- log4j-core per server: 1.21.1 2.22.1, 1.21.4 2.24.1, 1.21.11 and 26.1.2 2.25.2, 26.3 2.26.0 (the
+  `libraries` folders). Main compiles against 2.22.1 (`log4jCore`, `compileOnly`; Dependabot must not move it past
+  the oldest server's), the tests use 2.26.0 with `log4j-slf4j2-impl`. log4j-core's class files carry SpotBugs
+  and bnd annotations it does not ship, so `-Xlint:all` warned `[classfile]` until the build added `-classfile`.
+- A reconfiguration of the `LoggerContext` (`reconfigure()`, a `monitorInterval` reload) builds a new
+  `Configuration` with its own root `LoggerConfig`, without the filter. `LoggerContext.setConfiguration` stops the
+  old configuration (which stops its filters) and then fires a `PropertyChangeEvent` named
+  `LoggerContext.PROPERTY_CONFIG` (2.22.1 to 2.26.0), so `Log4jCapture` listens for it, restarts itself and moves to
+  the new root logger.
+- The error log groups by message template (the format string before `{}` is filled), so a log call's format
+  string must be constant per problem: vary only the `{}` parameters, never build the template from data, and
+  never log different problems through one bare `"{}"` template (each would hide the others after the first).
+- A log4j event and its message may be reused once the logging call returns (`ReusableLogEventFactory`, thread
+  locals on by default), so the filter copies strings and the throwable into a `Problem` before it returns.
+- Paper 1.21.1 `ServerPluginProviderStorage` catches whatever `onLoad` throws, logs `Error initializing plugin
+  '%s' in folder '%s' (Is it up to date?)` with the stack trace, and still enables the plugin. Moss's `onLoad`
+  assigns `MossPaper.CONTEXT` before `refresh()`, so after a failed refresh `CONTEXT` is an inactive context
+  and `getBeansOfType` throws: `HawkeyePlugin` catches the failure, skips Moss's enable and Disableable beans
+  for an inactive context, and disables itself from `onEnable` instead. Moss logs a failing `Loadable`,
+  `Enableable` or `Disableable` itself (`Failed to enable {}` under `gg.moonrise.moss.paper.MossPaper`) and
+  goes on; the error log files those as crashes because they are logged on the thread running Hawkeye's start.
+- The engine's own loggers are relocated with it (`gg.moonrise.hawkeye.libs.engine...`) and are Hawkeye's;
+  Moss and Spring loggers are shared by every Moss plugin, so they are Hawkeye's only on the startup thread.
+  Another plugin's logger (named after the plugin, or its `prefix`) is never Hawkeye's, not even there: Hawkeye's
+  enable registers `HawkeyeApi` in the `ServicesManager`, which on Paper fires `ServiceRegisterEvent` to other
+  plugins' listeners synchronously, and Paper logs their failures under their logger (MockBukkit fires no such
+  event). HikariCP starts every line with the pool name, so its events about a `Hawkeye-<shard>` pool
+  (`DatabaseFactory.POOL_PREFIX`) are Hawkeye's: with MariaDB at a closed port, Paper 1.21.1 and 26.3 printed
+  `Hawkeye-home - Pool is empty, failed to create/setup connection` with a stack trace (from
+  `com.zaxxer.hikari.pool.PoolBase`) once a minute or so, beside Hawkeye's own retry warning. Lettuce's
+  reconnect lines carry nothing Hawkeye-specific and are left alone.
+- Java 21 and 25 name the same zone differently with `Locale.ROOT` (`CST` against `GMT-06:00`), so the files print
+  times with the UTC offset (`xxx`).
+- Real servers, 2026-11-25 on Windows (Paper 1.21.1 build 133 on Java 21, 26.3 build 262 on Java 25), MariaDB
+  configured at `127.0.0.1:1`: the console showed `Could not connect to the database (attempt 1) ... (details in
+  plugins/Hawkeye/errors/Error-2026-11-25-21-26.txt)` once, and the file held the header (Minecraft version,
+  `Server type: Paper`, `Paper 26.3-262-827eeeb (MC: 26.3)`, Java, the plugin list) and attempts 1 to 5;
+  `latest.log` held no Hawkeye stack frame. A `config.yml` that is not YAML gave one ERROR line naming
+  `crash/Crash-...txt` (the startup thread's ERROR) on both, and `tnt-rollback.txt` passed on both with no
+  `errors` or `crash` folder written. Not run on Folia.
+- Without an SLF4J provider on the test class path every `@Slf4j` call was a no-op; the tests now log into a
+  real log4j (root `warn`, a `Null` appender), and every plugin load in a test writes error and crash files in
+  MockBukkit's temporary data folder (MockBukkit cannot build Cloud's manager, which Hawkeye logs as an ERROR at
+  enable: a crash file). `core.diagnostic.ConsoleLines` (tests) records what the console would print. The tests
+  have no JUL-to-log4j bridge (no `log4j-jul`), so a MockBukkit plugin's `getLogger()` line goes to JUL's console
+  handler (stderr) and never reaches the filter; a test stands in for Paper's bridge by logging to log4j under the
+  plugin's name.
+
+- Review and webhook (verified 2026-11-25): a file counts as reviewed once it is in `errors/reviewed/` or
+  `crash/reviewed/` (`core.diagnostic.ReportFiles`). The move runs on the error log's writer thread, between two
+  writes, and repoints the problems whose file moved: their repeats are appended to the reviewed file. Before that,
+  a real server showed the gap: a database retry repeated two seconds after `/he errors reviewed` and recreated the
+  waiting file with only a repeat line (`0 problem(s)`). A file deleted by hand gets its header again on the next
+  write. The webhook is read from `config.yml` in `onLoad` through
+  `HawkeyeConfigProvider.readConfig` (the same ConfigLib mapping, no second parser), so a context that fails to
+  start still reaches it; `core.service.diagnostic.ErrorReportService` then hands the error log the reloadable
+  configuration. `Diagnostics` is registered in the context from `HawkeyePlugin.loadInitialComponents`, as Moss
+  registers the plugin.
+- Real servers, 2026-11-25 (Paper 1.21.1 on Java 21, 26.3 on Java 25), MariaDB at a closed port and
+  `webhook-url` pointing at a local relay standing in for Discord: the first retry warning was posted once per
+  server (embed titled `Warning on <server.name>`, the report file attached), `/hawkeye errors` listed its file,
+  `/hawkeye errors reviewed` moved it, the next retries went to `errors/reviewed/`, and `/hawkeye errors` then
+  showed nothing waiting. The spool warning at shutdown was a new problem: a new waiting file and a second post,
+  sent before the server stopped. The URL's token appeared in no log. The join notice needs a client and was
+  checked on MockBukkit only.
+- An unquoted `${NAME}` value in YAML (`webhook-url: ${HAWKEYE_WEBHOOK_URL}`) starts a flow mapping and ConfigLib
+  reports the whole file as not valid YAML; it has to be quoted (`'${HAWKEYE_WEBHOOK_URL}'`), as SnakeYAML writes it.
+- Discord webhook body: `multipart/form-data` with `payload_json` and `files[0]`; `allowed_mentions: {parse: []}`
+  stops `@everyone` in game text from pinging. Gson's `JsonElement#toString` does not HTML-escape. A `429` carries
+  `retry_after` in seconds (a decimal) in its JSON body. `HttpClient#shutdownNow` exists from Java 21.
+- MockBukkit 4.122: `PlayerMock#setOp` before `ServerMock#addPlayer` throws `NullPointerException`; tests add the
+  player, make it an operator and fire `PlayerJoinEvent` again. A player without an explicitly registered
+  permission has it when it is an operator (Bukkit's default `op`). MockBukkit's library loader logs `Failed to get
+  hostname, using 'localhost'` at WARN on the thread enabling the plugin, which the error log files (and posts) as
+  a startup error in tests; a real server loads libraries before `onLoad`.
+
 ## Credential facts (verified 2026-11-21)
 
 - ConfigLib 4.8.1 rejects a number or boolean for a `String` field (`password: 123456`) unless the

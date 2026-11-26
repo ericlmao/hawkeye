@@ -4,8 +4,9 @@
 
 <server-dir> holds paper.jar, eula.txt and plugins/Hawkeye.jar. Each scenario line is a console command,
 optionally followed by " => <text>": the console output until the next command must contain that text.
-The server is stopped after the last command; the exit status is 0 when every expectation held. The
-full console log is written to <server-dir>/smoke.log.
+The server is stopped after the last command; the exit status is 0 when every expectation held and Hawkeye
+logged no ERROR. The full console log is written to <server-dir>/smoke.log; Hawkeye's stack traces are in
+plugins/Hawkeye/errors and crash.
 """
 import glob
 import os
@@ -74,7 +75,10 @@ def main():
     reader.join(5)
     with open(os.path.join(server_dir, "smoke.log"), "w", encoding="utf-8") as out:
         out.writelines(lines)
-    errors = [line for line in lines if "[Hawkeye]" in line and ("ERROR" in line or "Exception" in line)]
+    # Hawkeye logs under the plugin's name and under its class loggers; the error log prints each problem once
+    # as one line naming its file under plugins/Hawkeye/errors or crash.
+    errors = [line for line in lines if ("[Hawkeye]" in line or "[gg.moonrise.hawkeye" in line)
+              and ("ERROR" in line or "Exception" in line)]
     failures.extend("console: " + line.strip() for line in errors)
     for failure in failures:
         print("FAIL", failure)
