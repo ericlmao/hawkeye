@@ -32,6 +32,14 @@ second release in a quarter).
   `hawkeye.network`, `#count`) that searches again; a count, an empty result or a refused parameter is shown
   above the form. New `messages.yml` section `lookup-dialog`. Needs Paper 1.21.7 or newer and a 1.21.6 or newer
   client; older servers, the console, the inspector and `/hawkeye page` keep the chat output.
+- Dev mode: a new `config.yml` section `dev-mode` with `enabled` (off by default; applied on `/hawkeye reload`)
+  for developing Hawkeye itself, never for a real server. While it is on, `/hawkeye dev generate <count> [days]`
+  writes that many generated fake events (fake players, places, inventories and every action) over the last
+  `days` days (30 by default) straight into the archive, each run under its own server entry
+  `<server.name>-dev`, `-dev-2`, ..., with a progress line every 10 seconds; `/hawkeye dev status` shows it and
+  `/hawkeye dev cancel` stops it after the current batch, as turning dev mode off does. New permission
+  `hawkeye.dev` (operators by default, part of `hawkeye.*`) and `messages.yml` section `dev`. The console says
+  once at INFO whenever dev mode is turned on.
 
 ### Changed
 
@@ -55,6 +63,9 @@ second release in a quarter).
 
 - The tests log through SLF4J into a real log4j-core (`src/test/resources/log4j2-test.xml`: WARN and above, printed
   nowhere), as plugins do on a server, so the error log's filter is tested where it runs.
+- `scripts/smoke/dev-data.txt` runs dev mode on a real server: fake data is generated, looked up and rolled
+  back, and a long run reports its progress and is cancelled. `scripts/smoke/run.py` now waits up to a minute
+  for an expected reply that takes longer than three seconds.
 
 ## [26.4] - 2026-11-26
 

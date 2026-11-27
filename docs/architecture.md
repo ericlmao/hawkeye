@@ -70,7 +70,7 @@ All tables carry the configured prefix (default `hawkeye_`).
 | Table | Columns | Keys |
 |---|---|---|
 | `schema` | `version` | Migration bookkeeping (`core.sql.Migrations`) |
-| `server` | `id SMALLINT`, `name`, `scope`, `last_seen` (0 for an import node) | PK `id`, unique `name` |
+| `server` | `id SMALLINT`, `name`, `scope`, `last_seen` (0 for an import or dev node) | PK `id`, unique `name` |
 | `world` | `id INT`, `scope`, `name` | unique `(scope, name)` |
 | `actor` | `id INT`, `kind`, `key`, `name`, `name_lower` | unique `key`, index `name_lower` |
 | `type` | `id INT`, `value` | unique `value` |
@@ -497,6 +497,47 @@ one `server` row and one `import_state` row per source.
   failed estimate keeps the previous one and is logged once at DEBUG, never failing the import:
   `RowEstimate`).
 
+### Dev mode
+
+`config.yml: dev-mode.enabled` (off by default, applied on reload) is for developing Hawkeye: experimenting
+with storage and trying lookups, rollbacks and the archive at scale. It is never meant for a real server.
+While it is on, `core.service.dev` generates fake history into the home shard; it only adds archive
+segments, dictionary rows and one `server` row per run.
+
+- **Dev node.** Every run numbers its events under a fresh node, a `server` row named `<server.name>-dev`
+  (then `-dev-2`, `-dev-3`, ...) with the server's world scope and `last_seen = 0`, registered like an import
+  node (`ServerRepository.registerImport`, `core.storage.dev.DevDataStore`). Ranks restart at 0 in every
+  second of every node, so a second run over the same seconds under one node would issue the same ids; a node
+  per run never does. A run takes one of the 1,023 node ids; when the registry already holds id 1023, nothing
+  is registered and the run is refused. A dev node never runs: like an import node, `/hawkeye network` and job
+  destinations leave it out. Lookups filter by world scope, so fake events appear in ordinary lookups, and their
+  lines use `lookup.remote-location` (the event's server is not this one): `(x/y/z/world@<server.name>-dev)`.
+  `s:` selects world scopes, not nodes, so it cannot pick out fake data.
+- **The generator** (`core.service.dev.fake`, pure Java). `FakeServer` is seeded with the run's node id, so
+  runs in one database differ and a fresh database repeats them. Fake players (`count / 2000`, 8 to 8,000) have
+  stable names and version 3 UUIDs; they join and quit, build around homes near the world's centre (the spawn,
+  or the sender's position in their own world, which comes first), use containers, fight, trade, chat, teleport
+  and die, and the world grows, flows and explodes around them. A run of at least 35 events holds every action
+  and every payload kind. Items and entities are raw NBT with `DataVersion` 3955 (Minecraft 1.21.1) in 1.21.1
+  component shapes, so every supported server's data fixers upgrade them; entities are the minimal
+  `{id, DataVersion}` compound `/summon` loads, and a painting or an item frame also names the block it hangs
+  at (`Pos`, `TileX`/`TileY`/`TileZ` and its facing), as a real snapshot does.
+- **Time window.** Events end `archive.settle-seconds` before the run began and reach back the asked-for days
+  (30 by default, never before 2025-01-01), in non-decreasing order.
+- **Segments.** Batches of `archive.segment-events` go straight into the archive (`EventStore.writeArchived`),
+  one segment per transaction, numbered by a private `IdAssigner`. A batch closes only between two seconds
+  (twice the events close it regardless). A failed batch is never retried: a segment write is not idempotent.
+  Dev segments overlap the id ranges of live ones, which the archive supports.
+- **Progress, cancel and shutdown.** One run at a time per server, on its own `Hawkeye-Dev` thread. A
+  fixed-delay task on the `Hawkeye-Maintenance` thread, which exists only while a run is running, sends the
+  progress line every 10 seconds; it is cancelled before the outcome is published, so no progress line follows
+  it. `/hawkeye dev cancel`, or turning dev mode off and reloading, stops the run after its current batch;
+  shutdown cancels and waits up to 10 s. What a run wrote stays.
+- **Limits.** Fake data is permanent history: it is removed only by a purge (by time or world) or with the
+  database. Block events are independent picks with no consistent block history, so a rollback over them runs
+  but builds a world that never existed. Entity snapshots are about a tenth the size of real ones, so storage
+  figures from fake data are indicative only.
+
 ## Threading
 
 | Work | Thread |
@@ -507,6 +548,7 @@ one `server` row and one `import_state` row per source.
 | Lookups, rollback planning, purge, jobs | The bounded `Hawkeye-Query` executor |
 | Applying a rollback/restore/preview | The region that owns each chunk (`core.service.thread.ServerThreads`), a bounded number of blocks per tick |
 | A CoreProtect import | One `Hawkeye-Import` thread per run (reading, mapping, writing) and a `Hawkeye-Import-Pack` pool of 3 that compresses segment frames; both end with the run |
+| Generating fake data (dev mode) | One `Hawkeye-Dev` thread per run (generating, numbering, writing) and a `Hawkeye-Dev-Pack` pool of 3 that compresses segment frames; both end with the run. The progress line is a fixed-delay task on the `Hawkeye-Maintenance` thread that exists only while a run is running |
 | Replies to a command sender | The sender's own thread |
 | Hawkeye's warnings, errors and crashes (`core.diagnostic`) | Sorted on the logging thread by a log4j filter on the root logger (no I/O, never blocks); one `Hawkeye-ErrorLog` thread writes `errors/` and `crash/`; one `Hawkeye-Webhook` thread posts first times to Discord (50 waiting at most) |
 | Files waiting for review (`/he errors`, the notice on join) | Listed (and for `/he errors` read) on the `Hawkeye-Query` executor; the join notice only counts the folder listings. Marked reviewed (moved) on the `Hawkeye-ErrorLog` thread between two writes, or on `Hawkeye-Query` when the error log is not running; replies on the receiver's thread |

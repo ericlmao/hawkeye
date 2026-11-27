@@ -45,4 +45,7 @@ public final class MessagesConfig {
 
     @Comment("/hawkeye lookup and near as a dialog (config.yml: experimental.dialog-lookup).")
     private LookupDialogMessages lookupDialog = new LookupDialogMessages();
+
+    @Comment("/hawkeye dev generate, status and cancel (config.yml: dev-mode.enabled).")
+    private DevMessages dev = new DevMessages();
 }
