@@ -219,6 +219,9 @@ update them in the same change when you learn something durable or an entry stop
   folder is predictable (`<tmp>/TestHawkeyePlugin-0.0.0`), so tests write a `config.yml` before
   loading for start-only settings.
 - `PlayerInteractEvent#isCancelled` is deprecated in Paper 26.3; use `useInteractedBlock()`.
+- Denying `useInteractedBlock` makes the server return from `ServerPlayerGameMode#useItemOn` before the item
+  in hand is used on the block, so a block item is not placed and no `BlockPlaceEvent` follows (verified in
+  Paper's source, 2026-11-27). MockBukkit does not model the chain: tests fire the two events separately.
 - More shared handler lists: `PlayerSignCommandPreprocessEvent` arrives on the command handler (so it
   is handled inside the command listener, never twice), and arrow pickups and projectile launches
   share their parents' lists.

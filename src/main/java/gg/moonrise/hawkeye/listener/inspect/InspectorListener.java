@@ -11,7 +11,6 @@ import io.papermc.paper.block.TileStateInventoryHolder;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -26,8 +25,10 @@ import org.jetbrains.annotations.NotNull;
  * The inspector's clicks. While a player inspects: left-click shows a block's history (and does not
  * break it), right-click on a block with an inventory (a container, or a lectern, jukebox, chiseled
  * bookshelf, decorated pot or shelf) shows its transactions, right-click elsewhere shows the block
- * on the clicked face, and placing a block shows that spot instead of placing. Each reply starts a
- * lookup session, so {@code /hawkeye page} continues it. The cancelling handlers run at
+ * on the clicked face, and right-click with a block in hand shows the spot that block would fill
+ * (nothing is placed). A placement that arrives without a block click (a lily pad on water) or that
+ * another plugin lets through is cancelled and shows its spot too. Each reply starts a lookup
+ * session, so {@code /hawkeye page} continues it. The cancelling handlers run at
  * {@link EventPriority#LOWEST} so protection plugins see the cancelled event.
  */
 @SpringComponent
@@ -90,13 +91,17 @@ public final class InspectorListener implements Listener {
             lookUp(player, inspector.transactions(clicked));
             return;
         }
-        if (event.isBlockInHand()) {
-            // Placing shows the spot (onPlace); the clicked block itself is not used.
-            event.setUseInteractedBlock(Event.Result.DENY);
-            return;
-        }
+        // Cancelling also keeps a block in hand from being placed, so no place event follows.
         event.setCancelled(true);
-        lookUp(player, inspector.history(clicked.getRelative(event.getBlockFace())));
+        lookUp(player, inspector.history(spot(event, clicked)));
+    }
+
+    /** The spot a right-click shows: the block a held block would replace, else the one on the clicked face. */
+    private @NotNull Block spot(@NotNull PlayerInteractEvent event, @NotNull Block clicked) {
+        if (event.isBlockInHand() && clicked.isReplaceable()) {
+            return clicked;
+        }
+        return clicked.getRelative(event.getBlockFace());
     }
 
     private boolean inspecting(@NotNull Player player) {

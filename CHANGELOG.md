@@ -33,6 +33,11 @@ second release in a quarter).
   `plugins/Hawkeye/errors` and `crash`. `scripts/smoke/run.py` also fails on an ERROR of Hawkeye's class loggers,
   not only of the `Hawkeye` logger.
 
+### Fixed
+
+- Right-clicking with a block in hand while inspecting now shows the history of the spot the block would fill;
+  it used to do nothing.
+
 ### Tests
 
 - The tests log through SLF4J into a real log4j-core (`src/test/resources/log4j2-test.xml`: WARN and above, printed
