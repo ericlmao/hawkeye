@@ -11,6 +11,9 @@ public final class NewerApi {
     /** Paper 1.21.4: forced serialization of an entity in its death event (kill rollbacks). */
     public static final String ENTITY_SERIALIZATION_FLAG = "io.papermc.paper.entity.EntitySerializationFlag";
 
+    /** Paper 1.21.7: dialogs with server-side button callbacks. */
+    public static final String DIALOG = "io.papermc.paper.registry.data.dialog.action.DialogActionCallback";
+
     /** Minecraft 1.21.9: shelves, which hold items without a menu. */
     public static final String SHELF = "org.bukkit.block.Shelf";
 

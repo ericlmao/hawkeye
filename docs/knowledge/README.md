@@ -413,6 +413,16 @@ update them in the same change when you learn something durable or an entry stop
   layers in MapLike[{}]` when it creates a flat world from `level-type=minecraft:flat` with no
   `generator-settings`; the world is the classic flat one all the same. CoreProtect 25.0 defaults to
   `database-type: duckdb` (`database.duckdb`); `sqlite` gives the `database.db` the import scenarios use.
+- Dialogs (verified 2026-11-27): Paper's dialog API (`io.papermc.paper.dialog`,
+  `io.papermc.paper.registry.data.dialog`) is in paper-api 1.21.8, 1.21.11 and 26.3 with the same classes,
+  except that `DialogAction.staticAction` takes a raw `ClickEvent` on 1.21.x (Adventure 4) and a
+  `ClickEvent<?>` on 26.3; `ui.dialog.PaperDialogScreens` (gated on `NewerApi.DIALOG`) therefore uses no
+  `ClickEvent`, only server-side callbacks. `ClickCallback.Options` defaults to one use and 12 hours
+  (Adventure 4.24 and 5.2). MockBukkit 4.122 registers no `DialogInstancesProvider` or
+  `InlinedRegistryBuilderProvider` (so the dialog builders and `Dialog.create` throw `NoSuchElementException`),
+  and `PlayerMock#showDialog` is Adventure's empty default. The tests register `support.dialog.FakeDialogProvider`
+  for both through `META-INF/services` and read dialogs back through `support.dialog.DialogPlayer` and
+  `ShownDialog` (`press` runs a button's callback with a `FakeDialogResponse`).
 
 ## Error log facts (verified 2026-11-25)
 
