@@ -51,6 +51,9 @@ public class HawkeyeConfigProviderTest {
         String messages = Files.readString(plugin.getDataPath().resolve(HawkeyeConfigProvider.MESSAGES_FILE));
         assertTrue(messages.contains("block-break:"), messages);
         assertTrue(messages.contains("storage-not-ready:"), messages);
+        assertTrue(messages.contains("lookup-dialog:"), messages);
+        assertTrue(messages.contains("  filters-title:"), messages);
+        assertTrue(messages.contains("  count-only:"), messages);
         String commands = Files.readString(plugin.getDataPath().resolve(HawkeyeConfigProvider.COMMANDS_FILE));
         assertTrue(commands.contains("root-aliases:"), commands);
         assertTrue(commands.contains("subcommand-aliases:"), commands);
@@ -120,6 +123,17 @@ public class HawkeyeConfigProviderTest {
         ReloadResult.Failed failed = assertInstanceOf(ReloadResult.Failed.class, provider.reloadConfig());
         assertTrue(failed.reason().contains("archive.segment-events"), failed.reason());
         assertTrue(failed.reason().contains("archive.settle-seconds"), failed.reason());
+    }
+
+    @Test
+    public void theExperimentalSwitchesApplyOnReload() {
+        assertFalse(provider.get().experimental().dialogLookup());
+        TestPlugins.writeConfig(plugin, "experimental:\n  dialog-lookup: true\n");
+
+        ReloadResult.Reloaded reloaded = assertInstanceOf(ReloadResult.Reloaded.class, provider.reloadConfig());
+
+        assertEquals(List.of(), reloaded.restartRequired());
+        assertTrue(provider.get().experimental().dialogLookup());
     }
 
     @Test

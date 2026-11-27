@@ -157,6 +157,10 @@ CoreProtect's names (`broke`, `placed`, `login`, `drops`, a leading `#`) work to
 - Pages stay stable while new events arrive, and `/he page` works for `lookup.session-minutes`. On very
   large results the first page shows totals like `160+`; page on, or use `#count`, for the exact number.
 - Hover an item in the results to see its name and enchantments, and click a written book to read it.
+- Experimental, off by default: with `experimental.dialog-lookup: true`, players get `/he lookup` and `/he near`
+  as a dialog with the same lines (hover them, click a location to teleport, click a book to read it), Previous
+  and Next buttons, and a Filters form with one field per parameter. The console, the inspector and `/he page`
+  keep using chat. It needs Paper 1.21.7 or newer and a 1.21.6 or newer client.
 
 ## ► What is recorded
 
@@ -208,6 +212,7 @@ reply tells you).
 | `network` | `bus` (`NONE` or `REDIS`), `redis-uri`, `poll-interval-seconds`, `shards` |
 | `archive` | `enabled`, `segment-events` (262144), `settle-seconds` (60), `after-hours` (24), `interval-minutes` (1) |
 | `error-reports` | `webhook-url` (a Discord webhook, empty for none), `webhook-errors`, `webhook-crashes`, `join-notice` |
+| `experimental` | `dialog-lookup`: lookups as a dialog (off by default) |
 
 Every player-facing message is a MiniMessage template in `messages.yml`.
 
@@ -349,6 +354,7 @@ same actions with these differences:
 | What | Full from | On older servers |
 |---|---|---|
 | Mobs released from a bucket by a dispenser | 1.21.4 | Recorded under `#spawn_egg` instead of `#dispenser` |
+| Lookup dialog (`experimental.dialog-lookup`) | 1.21.7 | Lookups stay in chat |
 | Items on shelves | 1.21.9 | Shelves don't exist |
 | Crafted items | 1.21.11 | Counted from the click; a shift-click is an estimate |
 | Boats and minecarts destroyed without an attacker | 26.1.2 | Blamed on `#unknown` instead of the cause (`#lava`) |

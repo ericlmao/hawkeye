@@ -20,7 +20,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
@@ -59,17 +61,30 @@ public final class QueryInput {
      */
     public @NotNull Optional<BuildResult.Built> read(@NotNull CommandSender sender, @NotNull String input,
             int defaultRadius, int maxRadius) {
-        BuildResult result = switch (syntax.parse(input)) {
-            case ParseResult.Parsed parsed -> builder.build(parsed.parameters(), context(sender, defaultRadius,
-                    maxRadius));
-            case ParseResult.Invalid invalid -> new BuildResult.Invalid(invalid.error());
-        };
-        return switch (result) {
+        return switch (build(sender, input, defaultRadius, maxRadius)) {
             case BuildResult.Built built -> Optional.of(built);
             case BuildResult.Invalid invalid -> {
                 tell(sender, invalid.error());
                 yield Optional.empty();
             }
+        };
+    }
+
+    /**
+     * Parses and builds a query without telling the sender anything.
+     *
+     * @param sender        who ran the command
+     * @param input         the parameter list
+     * @param defaultRadius the radius without {@code r:}; 0 means every world
+     * @param maxRadius     the largest {@code r:} for players; 0 means no limit (the console is never limited)
+     * @return the query, or the first error
+     */
+    public @NotNull BuildResult build(@NotNull CommandSender sender, @NotNull String input, int defaultRadius,
+            int maxRadius) {
+        return switch (syntax.parse(input)) {
+            case ParseResult.Parsed parsed -> builder.build(parsed.parameters(), context(sender, defaultRadius,
+                    maxRadius));
+            case ParseResult.Invalid invalid -> new BuildResult.Invalid(invalid.error());
         };
     }
 
@@ -80,7 +95,17 @@ public final class QueryInput {
      * @param error  the error
      */
     public void tell(@NotNull CommandSender sender, @NotNull QueryError error) {
-        Message.of(template(error.kind())).send(sender, Placeholder.unparsed("value", error.value()));
+        Message.of(template(error.kind())).send(sender, placeholder(error));
+    }
+
+    /**
+     * A query error as a component: the message {@link #tell} sends, rendered for no viewer in particular.
+     *
+     * @param error the error
+     * @return the message
+     */
+    public @NotNull Component describe(@NotNull QueryError error) {
+        return Message.of(template(error.kind())).asComponent(placeholder(error));
     }
 
     /**
@@ -140,6 +165,10 @@ public final class QueryInput {
         boolean console = !(sender instanceof Player);
         return new QueryContext(position, sender.hasPermission(Permissions.NETWORK), position == null ? 0 : defaultRadius,
                 console ? 0 : maxRadius, world -> plugin.getServer().getWorld(world) != null);
+    }
+
+    private static @NotNull TagResolver.Single placeholder(@NotNull QueryError error) {
+        return Placeholder.unparsed("value", error.value());
     }
 
     private @NotNull String template(@NotNull QueryError.Kind kind) {

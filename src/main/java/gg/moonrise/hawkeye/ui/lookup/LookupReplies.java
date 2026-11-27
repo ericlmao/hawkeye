@@ -74,7 +74,13 @@ public final class LookupReplies {
         lines.forEach(sender::sendMessage);
     }
 
-    private static @NotNull LookupOutcome.Failed failed(@NotNull Throwable error) {
+    /**
+     * Logs a lookup that failed with an exception and turns it into the outcome shown for it.
+     *
+     * @param error what the lookup's future completed with; a {@link CompletionException} is unwrapped
+     * @return the failure, its reason the cause's message (else its class name)
+     */
+    public static @NotNull LookupOutcome.Failed failed(@NotNull Throwable error) {
         Throwable cause = error instanceof CompletionException && error.getCause() != null ? error.getCause() : error;
         log.error("A lookup failed", cause);
         return new LookupOutcome.Failed(Objects.requireNonNullElse(cause.getMessage(),

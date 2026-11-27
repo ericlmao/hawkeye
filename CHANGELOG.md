@@ -25,6 +25,13 @@ second release in a quarter).
   environment variable) gets the first time of every problem with its file attached, `webhook-errors` and
   `webhook-crashes` choose what is sent. Repeats are never sent, mentions are off, the URL is never logged, and
   the webhook is read before Hawkeye starts so a failed start is posted too.
+- Lookup dialog (experimental): with `experimental.dialog-lookup: true` (off by default; applied on
+  `/hawkeye reload`), players get `/hawkeye lookup` and `/hawkeye near` as a dialog instead of chat lines. It
+  shows the same result lines (hovers, click a location to teleport, click a book to read it) with Previous and
+  Next buttons, and a Filters form with one field per parameter (`u:`, `t:`, `r:`, `a:`, `i:`, `e:`, `s:` with
+  `hawkeye.network`, `#count`) that searches again; a count, an empty result or a refused parameter is shown
+  above the form. New `messages.yml` section `lookup-dialog`. Needs Paper 1.21.7 or newer and a 1.21.6 or newer
+  client; older servers, the console, the inspector and `/hawkeye page` keep the chat output.
 
 ### Changed
 

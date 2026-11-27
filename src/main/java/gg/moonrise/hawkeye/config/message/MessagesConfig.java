@@ -42,4 +42,7 @@ public final class MessagesConfig {
 
     @Comment("/hawkeye errors and the notice on join about error and crash files.")
     private ErrorMessages errors = new ErrorMessages();
+
+    @Comment("/hawkeye lookup and near as a dialog (config.yml: experimental.dialog-lookup).")
+    private LookupDialogMessages lookupDialog = new LookupDialogMessages();
 }
