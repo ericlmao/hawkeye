@@ -10,6 +10,7 @@ import java.sql.SQLException;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import org.jetbrains.annotations.NotNull;
 
@@ -200,11 +201,11 @@ public final class EventRepository {
     }
 
     /**
-     * The oldest events below an id, locked for the archiving transaction so a concurrent flag update
-     * cannot be lost between reading a row and deleting it (MySQL and PostgreSQL take row locks;
-     * SQLite's single writer refuses the stale transaction instead).
+     * The oldest events below an id, read without a lock: an archiving pass reads them in auto-commit
+     * mode, encodes them, and checks them with {@link #lockUnchanged} inside the transaction that stores
+     * the segment and deletes them.
      *
-     * @param connection a connection inside a transaction
+     * @param connection a connection
      * @param sql        the shard's SQL context
      * @param belowId    the exclusive id bound
      * @param limit      the most rows
@@ -213,9 +214,8 @@ public final class EventRepository {
      */
     public @NotNull List<EventRow> oldestForArchive(@NotNull Connection connection, @NotNull Sql sql, long belowId,
             int limit) throws SQLException {
-        String lock = sql.dialect() == Dialect.SQLITE ? "" : " FOR UPDATE";
         try (PreparedStatement statement = connection.prepareStatement("SELECT " + String.join(", ", EventSql.COLUMNS)
-                + " FROM " + sql.tables().event() + " WHERE id < ? ORDER BY id LIMIT ?" + lock)) {
+                + " FROM " + sql.tables().event() + " WHERE id < ? ORDER BY id LIMIT ?")) {
             statement.setLong(1, belowId);
             statement.setInt(2, limit);
             try (ResultSet rows = statement.executeQuery()) {
@@ -224,6 +224,50 @@ public final class EventRepository {
                     out.add(read(rows));
                 }
                 return out;
+            }
+        }
+    }
+
+    /**
+     * Locks the hot rows in the id range of rows read earlier and tells whether every one of those rows is
+     * still there with the same flags, the only column a statement updates ({@link #setRolledBack}). Rows
+     * in the range that were not read (written later) are ignored. MySQL and PostgreSQL lock with
+     * {@code FOR UPDATE} until the transaction ends; on SQLite the transaction already holds the database's
+     * write lock ({@code Database#transaction}).
+     *
+     * @param connection a connection inside a transaction
+     * @param sql        the shard's SQL context
+     * @param rows       the rows read earlier, with distinct ids
+     * @return {@code true} when none of them was deleted or changed
+     * @throws SQLException when the query fails
+     */
+    public boolean lockUnchanged(@NotNull Connection connection, @NotNull Sql sql, @NotNull List<EventRow> rows)
+            throws SQLException {
+        if (rows.isEmpty()) {
+            return true;
+        }
+        List<EventRow> sorted = rows.stream().sorted(Comparator.comparingLong(EventRow::id)).toList();
+        String lock = sql.dialect() == Dialect.SQLITE ? "" : " FOR UPDATE";
+        try (PreparedStatement statement = connection.prepareStatement("SELECT id, flags FROM " + sql.tables().event()
+                + " WHERE id BETWEEN ? AND ? ORDER BY id" + lock)) {
+            statement.setLong(1, sorted.getFirst().id());
+            statement.setLong(2, sorted.getLast().id());
+            try (ResultSet stored = statement.executeQuery()) {
+                int next = 0;
+                while (stored.next() && next < sorted.size()) {
+                    long id = stored.getLong(1);
+                    EventRow expected = sorted.get(next);
+                    if (id > expected.id()) {
+                        return false;
+                    }
+                    if (id == expected.id()) {
+                        if (stored.getInt(2) != expected.flags()) {
+                            return false;
+                        }
+                        next++;
+                    }
+                }
+                return next == sorted.size();
             }
         }
     }

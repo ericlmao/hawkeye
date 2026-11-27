@@ -348,7 +348,8 @@ update them in the same change when you learn something durable or an entry stop
   or item frame a rollback loaded; with `Pos`, `TileX`/`TileY`/`TileZ` and the facing it logs nothing.
 - Fake places ignore the terrain: a mob respawned inside the bedrock layer falls out of the world, and most
   fake paintings and item frames have no wall behind them and pop off as items.
-- Speed on this shared host (SQLite, 3 pack threads, load 5 and more): about 25,000 to 65,000 events a second in
+- Speed on this shared host (SQLite, 3 pack threads, load 5 and more, measured before segments were encoded
+  outside their transaction): about 25,000 to 65,000 events a second in
   262,144-event segments; 1,885,041 fake events were 12.2 MB in 8 segments by `/hawkeye status` (6.5 B/event).
   With the minimum of 8 players nearly every event of a 5,000-event run is in the first world; a larger run
   has 5 to 8% in the others (players reach them by teleporting and stay a while).
@@ -367,6 +368,32 @@ update them in the same change when you learn something durable or an entry stop
   hears progress.
 - MockBukkit 4.122 `WorldMock#getMinHeight`/`getMaxHeight` and `getSpawnLocation` are implemented, so
   `DevCommand` reads the real world bounds in tests.
+
+## SQLite transactions (verified 2026-11-27)
+
+- In WAL mode a deferred transaction (`BEGIN`, which sqlite-jdbc runs for `setAutoCommit(false)`) that has
+  read holds a snapshot; its first write fails at once with `SQLITE_BUSY_SNAPSHOT` when another connection
+  committed since, and with `SQLITE_BUSY` ("The database file is locked") when another connection holds the
+  write lock at that moment. The busy timeout does not apply to that upgrade, and retrying the same
+  transaction cannot succeed. A production server's archiver failed this way on every pass (the event writer
+  commits all the time), and the old code failed `ArchiveConcurrencyTest` with the `SQLITE_BUSY` variant.
+  `Database.transaction` therefore runs `BEGIN IMMEDIATE` / `COMMIT` / `ROLLBACK` itself on SQLite: the
+  transaction waits for the write lock under the 15 s busy timeout and reads only once it holds it.
+- sqlite-jdbc 3.54.1.0 (`javap` of `SQLiteConnection` and `DB`): `setAutoCommit(false)` runs the
+  transaction prefix (`begin;` in the default DEFERRED mode) and `setAutoCommit(true)` runs `commit;`;
+  `commit()` runs `commit;` and then the prefix again, `rollback()` runs `rollback;` and then the prefix again.
+  So the `transaction_mode=IMMEDIATE` property would take the write lock again right after every commit and
+  rollback, and could fail with `SQLITE_BUSY` after a commit that succeeded: do not use it. In auto-commit
+  mode, after an update `DB.ensureAutoCommit(true)` steps a cached `begin;` and returns quietly when that
+  fails ("assume we are in a transaction"), so a transaction begun by hand with `BEGIN IMMEDIATE` works on a
+  connection left in auto-commit mode.
+- One `Archive.compact` pass of 262,144 rows (`SyntheticServer` events, SQLite file on disk, host at load
+  about 7) took 9.24 s and 7.61 s before the split: reading the rows 0.42 s, encoding plus segment insert and
+  index 4.50 s, `deleteIds` 1.17 s. A pass now holds the write lock (SQLite) or the row locks only for the
+  check, the insert, the index update and the delete; encoding runs before. `archive.segment-events` may be
+  up to 1,048,576, so a lock held over the encoding could outlast the 15 s busy timeout of a waiting writer.
+- `Archive.purge` still re-encodes a straddling or partly purged segment inside its transaction, so on SQLite
+  it holds the write lock for one re-encode of up to `archive.segment-events` rows per rewritten segment.
 
 ## Version support (verified 2026-11-25)
 

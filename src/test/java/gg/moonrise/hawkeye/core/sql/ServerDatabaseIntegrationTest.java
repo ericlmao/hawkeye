@@ -26,6 +26,7 @@ import gg.moonrise.hawkeye.core.repository.network.LeaseRepository;
 import gg.moonrise.hawkeye.core.repository.network.ServerRepository;
 import gg.moonrise.hawkeye.core.storage.archive.Archive;
 import gg.moonrise.hawkeye.core.storage.archive.Archives;
+import gg.moonrise.hawkeye.core.storage.archive.PreparedSegment;
 import gg.moonrise.hawkeye.core.storage.event.EventStore;
 import gg.moonrise.hawkeye.core.storage.event.QueryResolver;
 import gg.moonrise.hawkeye.core.storage.importer.ImportStore;
@@ -200,6 +201,13 @@ public class ServerDatabaseIntegrationTest {
         // Segments of 400 events; the newest 400 have not settled yet.
         ArchiveSettings packing = new ArchiveSettings().withPacking(400, 60, 1);
         long now = T0 + 1_600_000 + 60_000;
+        // A pass whose rows changed after it read them stores nothing (the locking read of the check).
+        PreparedSegment stale = archive.prepareCompaction(shard, packing, now).orElseThrow();
+        List<Long> changed = List.of(stale.rows().get(7).id());
+        store.setRolledBack(shard, changed, true);
+        assertFalse(archive.commitCompaction(shard, stale), "a changed flag makes the pass stale");
+        assertEquals(0, archive.totals(shard).segments());
+        store.setRolledBack(shard, changed, false);
         int packed = 0;
         int pass;
         while ((pass = archive.compact(shard, packing, now)) > 0) {

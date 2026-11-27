@@ -470,7 +470,8 @@ public class SegmentRepository {
 
     /**
      * A segment's rolled-back ordinals, locking the segment row against a concurrent flag change or
-     * rewrite until the transaction ends (MySQL and PostgreSQL; SQLite has a single writer anyway).
+     * rewrite until the transaction ends (MySQL and PostgreSQL; on SQLite the transaction already holds the
+     * database's write lock from its {@code BEGIN IMMEDIATE}, see {@code Database#transaction}).
      *
      * @param connection a connection inside a transaction
      * @param sql        the shard's SQL context

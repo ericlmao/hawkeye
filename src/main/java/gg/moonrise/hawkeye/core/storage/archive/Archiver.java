@@ -28,8 +28,9 @@ import org.jetbrains.annotations.NotNull;
  * Runs the archive ({@link Archive#compact}) every {@code archive.interval-minutes} on the server that
  * holds the shard's {@code archive} lease, so a whole network can share one configuration. Each pass
  * packs one segment of {@code archive.segment-events} settled events (or fewer, once they are older
- * than {@code archive.after-hours}) in one transaction on the query pool; passes follow each other until
- * one packs nothing, so the maintenance thread (heartbeats, network jobs) is never held. After packing, a
+ * than {@code archive.after-hours}) on the query pool: it reads and compresses them without a lock, then
+ * stores the segment and deletes them in one short transaction. Passes follow each other until one packs
+ * nothing, so the maintenance thread (heartbeats, network jobs) is never held. After packing, a
  * run spends up to {@link #CATCH_UP_TIME} adding segments that are missing from the {@link SegmentIndex}
  * (written before it existed), newest first, a batch per transaction.
  */
