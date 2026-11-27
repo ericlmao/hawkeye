@@ -319,6 +319,31 @@ update them in the same change when you learn something durable or an entry stop
     `EntityBlockFormEvent`, `BlockMultiPlaceEvent`, `EntityBreakDoorEvent`, `PlayerDeathEvent` and
     `HangingBreakByEntityEvent` share their parent's.
 
+## Dev mode facts (verified 2026-11-27)
+
+- Each `/hawkeye dev generate` run takes a fresh node (`<server.name>-dev`, `-dev-2`, ...; `DevDataStore`):
+  ranks restart at 0 per (second, node) (`IdAssigner`), so a second run over the same seconds under one node
+  would repeat ids, and there is no cheap per-node lookup of used ranks. It writes straight into the archive
+  (`EventStore.writeArchived`, one segment per batch) like the CoreProtect import, not through the live queue
+  and the hot table.
+- Dev and import events render with `lookup.remote-location` (`EventLines.location` compares the event's server
+  with `server.name`), and `s:` does not filter by node (`QueryTargets.named` maps names to world scopes).
+- Fake items and entities carry `DataVersion` 3955 (Minecraft 1.21.1) in 1.21.1 component shapes
+  (`FakeItems`, `FakeEntities`); they read back through `ItemSummary`/`ItemDetails` in tests, but whether
+  every supported server deserializes them in a rollback has not been checked on a real server yet.
+- The dev generator (`core.service.dev.fake`, main) and the benchmark's `Synthetic*` (test sources) are separate
+  on purpose: the benchmark's stream (random gzip-like payloads, a boat entity id 1.21.1 lacks) backs its
+  published figures, the dev one must be real, decodable NBT.
+- The "Dev mode is on" announcement is INFO because every WARN from a `gg.moonrise.hawkeye` logger is filed by the
+  error log (and posted to the webhook). The test log4j root is `warn`: `HawkeyeConfigProviderTest` raises the
+  provider's logger to INFO with `Configurator.setLevel` and reads it through `ConsoleLines` on the root.
+- `DevDataService.tune` (package-private, tests only; `DevDataTuning` for other packages) lowers the batch size
+  below `archive.segment-events`' minimum and the 10 s progress interval. Progress is a fixed-delay task on the
+  maintenance executor scheduled before `started` is called, so a test that holds the run inside `started` still
+  hears progress.
+- MockBukkit 4.122 `WorldMock#getMinHeight`/`getMaxHeight` and `getSpawnLocation` are implemented, so
+  `DevCommand` reads the real world bounds in tests.
+
 ## Version support (verified 2026-11-25)
 
 - One jar for Paper 1.21.1 to 26.3. `src/main` compiles against `paper-api:1.21.1-R0.1-SNAPSHOT`

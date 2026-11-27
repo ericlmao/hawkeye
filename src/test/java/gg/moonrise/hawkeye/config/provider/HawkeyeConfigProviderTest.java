@@ -60,6 +60,7 @@ public class HawkeyeConfigProviderTest {
         assertTrue(messages.contains("lookup-dialog:"), messages);
         assertTrue(messages.contains("  filters-title:"), messages);
         assertTrue(messages.contains("  count-only:"), messages);
+        assertTrue(messages.contains("\ndev:\n"), messages);
         String commands = Files.readString(plugin.getDataPath().resolve(HawkeyeConfigProvider.COMMANDS_FILE));
         assertTrue(commands.contains("root-aliases:"), commands);
         assertTrue(commands.contains("subcommand-aliases:"), commands);

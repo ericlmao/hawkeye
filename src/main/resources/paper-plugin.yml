@@ -22,6 +22,7 @@ permissions:
       hawkeye.network: true
       hawkeye.admin: true
       hawkeye.errors: true
+      hawkeye.dev: true
   hawkeye.help:
     description: /hawkeye and /hawkeye help
     default: op
@@ -51,4 +52,7 @@ permissions:
     default: op
   hawkeye.errors:
     description: /hawkeye errors and the notice on join about error and crash files waiting for review
+    default: op
+  hawkeye.dev:
+    description: /hawkeye dev generate, status and cancel (dev mode, config.yml dev-mode.enabled)
     default: op

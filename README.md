@@ -95,6 +95,8 @@ The root command is `/hawkeye`, alias `/he`. Aliases in brackets can be changed 
 | `/he purge t:<age> [r:#world]` | `hawkeye.purge` | Deletes data older than the age |
 | `/he import coreprotect [source]` | `hawkeye.import` | Imports a CoreProtect database |
 | `/he import status`, `/he import cancel` | `hawkeye.import` | Shows or stops the running import |
+| `/he dev generate <count> [days]` | `hawkeye.dev` | [Dev mode](#dev-mode) only: writes generated fake history |
+| `/he dev status`, `/he dev cancel` | `hawkeye.dev` | Shows or stops the running generation |
 | `/he status` | `hawkeye.admin` | Queue, writer and database health |
 | `/he network` | `hawkeye.network` | Every server on the network and its heartbeat |
 | `/he reload` | `hawkeye.admin` | Reloads `config.yml` and `messages.yml` |
@@ -394,6 +396,29 @@ The jar lands in `build/libs/`. Before changing anything, read:
   databases, smoke tests, benchmarks and releases.
 - [docs/architecture.md](docs/architecture.md): storage format, threading and the multi-server design.
 - [CHANGELOG.md](CHANGELOG.md): changes per release.
+
+### ➥ Dev mode
+
+Dev mode is made for developing Hawkeye: experimenting with storage, baking fake data to try lookups,
+rollbacks and the archive at scale, and other experiments. It is not meant to be used on any real server, for
+any purpose. It is off by default; to turn it on, set this in `config.yml` and run `/he reload`:
+
+```yaml
+dev-mode:
+  enabled: true
+```
+
+`/he dev generate <count> [days]` (permission `hawkeye.dev`) then writes `count` fake events spread over the
+last `days` days (30 by default): fake players (one per 2,000 events, 8 to 8,000) joining and quitting with
+their inventories, building, mining, using containers, fighting, trading, chatting, teleporting and dying, and
+the world growing, flowing and exploding around them, with every kind of action, around each world's spawn (or
+around you, in your own world). A progress line arrives every 10 seconds until it is done; `/he dev status`
+shows how far it is and `/he dev cancel` stops it after the current batch (so does turning dev mode off).
+
+- Each run goes straight into the archive under its own server entry, `<server.name>-dev`, then `-dev-2`, ...
+  (a database has at most 1023 entries), so its lines show `(x/y/z/world@<server.name>-dev)`.
+- Fake data cannot be removed on its own: purge by time or world, or delete the database.
+- A rollback over it runs, but builds a world that never existed.
 
 Found a bug or have an idea? [Open an issue](https://github.com/ericlmao/hawkeye/issues). Hawkeye is free
 software under the [GNU General Public License v3.0](LICENSE).

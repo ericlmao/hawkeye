@@ -42,6 +42,9 @@ public final class Permissions {
     /** {@code /hawkeye errors} and the notice on join about error and crash files waiting for review. */
     public static final String ERRORS = "hawkeye.errors";
 
+    /** {@code /hawkeye dev generate}, {@code dev status} and {@code dev cancel} (dev mode). */
+    public static final String DEV = "hawkeye.dev";
+
     private Permissions() {
     }
 }
