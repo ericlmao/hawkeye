@@ -137,7 +137,13 @@ public record LookupLines(@NotNull MessagesConfig messages, @NotNull EventLines 
                 Placeholder.component("previous", previous), Placeholder.component("next", next));
     }
 
-    private @NotNull TagResolver.Single @NotNull [] paging(@NotNull PageView view) {
+    /**
+     * The paging placeholders of the header and footer templates.
+     *
+     * @param view the page
+     * @return {@code <page>}, {@code <pages>} and {@code <total>}, in that order, all parsed
+     */
+    public @NotNull TagResolver.Single @NotNull [] paging(@NotNull PageView view) {
         LookupMessages lookup = messages.getLookup();
         String pages = switch (view.total()) {
             case LookupTotal.Exact exact -> Integer.toString(view.pagesFor(exact.events()));
@@ -164,7 +170,13 @@ public record LookupLines(@NotNull MessagesConfig messages, @NotNull EventLines 
         return messages.getLookup().getAtLeast().replace("<value>", value);
     }
 
-    private @NotNull List<Component> warnings(@NotNull List<LookupWarning> warnings) {
+    /**
+     * One {@code lookup.shard-unavailable} line per shard that could not be read.
+     *
+     * @param warnings the shards left out of a result
+     * @return the lines, empty when nothing was left out
+     */
+    public @NotNull List<Component> warnings(@NotNull List<LookupWarning> warnings) {
         String template = messages.getLookup().getShardUnavailable();
         return warnings.stream()
                 .map(warning -> Message.of(template).asComponent(Placeholder.unparsed("shard", warning.shard()),

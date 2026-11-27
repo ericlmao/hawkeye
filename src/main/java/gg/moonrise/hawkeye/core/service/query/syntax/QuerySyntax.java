@@ -8,6 +8,7 @@ import gg.moonrise.hawkeye.util.text.Durations;
 import gg.moonrise.moss.spring.SpringComponent;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
@@ -40,7 +41,7 @@ import org.jetbrains.annotations.NotNull;
 public final class QuerySyntax {
 
     /** The parameter prefixes, short form first, for suggestions. */
-    public static final List<String> PREFIXES = List.of("u:", "t:", "r:", "a:", "i:", "e:", "s:");
+    public static final List<String> PREFIXES = Arrays.stream(QueryPrefix.values()).map(QueryPrefix::token).toList();
 
     private static final Pattern PLAYER_NAME = Pattern.compile("[a-z0-9_.]{1,16}");
     private static final Pattern RADIUS = Pattern.compile("(\\d{1,7})(?:x(\\d{1,4}))?");
@@ -89,21 +90,23 @@ public final class QuerySyntax {
             if (colon <= 0) {
                 return error(QueryError.Kind.UNKNOWN_PARAMETER, token);
             }
-            String prefix = token.substring(0, colon).toLowerCase(Locale.ROOT);
+            Optional<QueryPrefix> prefix = QueryPrefix.of(token.substring(0, colon));
             String value = token.substring(colon + 1);
             List<String> values = values(value);
             if (values.isEmpty()) {
                 return error(QueryError.Kind.EMPTY_VALUE, token);
             }
-            return switch (prefix) {
-                case "u", "user", "users", "p", "player" -> actors(values);
-                case "t", "time" -> time(value);
-                case "r", "radius" -> radius(value);
-                case "a", "action", "actions" -> actions(values);
-                case "i", "include", "b", "block", "blocks" -> includes(values);
-                case "e", "exclude" -> excludes(values);
-                case "s", "server", "servers" -> servers(values);
-                default -> error(QueryError.Kind.UNKNOWN_PARAMETER, token);
+            if (prefix.isEmpty()) {
+                return error(QueryError.Kind.UNKNOWN_PARAMETER, token);
+            }
+            return switch (prefix.get()) {
+                case USER -> actors(values);
+                case TIME -> time(value);
+                case RADIUS -> radius(value);
+                case ACTION -> actions(values);
+                case INCLUDE -> includes(values);
+                case EXCLUDE -> excludes(values);
+                case SERVER -> servers(values);
             };
         }
 
