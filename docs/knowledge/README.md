@@ -423,6 +423,23 @@ update them in the same change when you learn something durable or an entry stop
   and `PlayerMock#showDialog` is Adventure's empty default. The tests register `support.dialog.FakeDialogProvider`
   for both through `META-INF/services` and read dialogs back through `support.dialog.DialogPlayer` and
   `ShownDialog` (`press` runs a button's callback with a `FakeDialogResponse`).
+- Lookup dialog (`experimental.dialog-lookup`, `ui.lookup.LookupDialogs`): two screens. Results is a multi-action
+  dialog (summary, the chat's own `EventLines` components, shard warnings; Previous/Next/Filters, exit Close);
+  Filters is a confirmation dialog (the last reply as a notice, one text field per prefix, `servers` only with
+  `hawkeye.network`, the `count` toggle; Search/Close). Every outcome that is not a page with events (nothing
+  found, a count, a refused parameter from Search, no session, a failed lookup) is the form with the chat line
+  above it. `after_action` is CLOSE, so a press closes the dialog and the server shows a fresh one; the one-use
+  callbacks capture only the player, a `LookupFilters` and a page number, and every handler first hops with
+  `ServerThreads.runFor` and re-checks `hawkeye.lookup`. A dialog that cannot be shown falls back to the chat
+  lines. `LookupFilters` fields hold no whitespace, so a field cannot add a second parameter.
+  Not yet checked on a real client (2026-11-27):
+  - that click events inside a dialog's body text (teleport `run_command`, the book callback) fire, and close the
+    dialog;
+  - the layout order: body, inputs and action buttons scrolling together, the exit and confirmation buttons in
+    the footer;
+  - that 300 px body lines and 100 px buttons fit the screen;
+  - how paging feels with a close and reopen per press;
+  - which thread runs a dialog callback on Folia.
 
 ## Error log facts (verified 2026-11-25)
 

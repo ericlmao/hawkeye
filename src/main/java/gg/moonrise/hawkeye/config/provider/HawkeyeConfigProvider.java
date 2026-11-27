@@ -44,8 +44,8 @@ public final class HawkeyeConfigProvider implements Reloadable {
     public static final String COMMANDS_FILE = "commands.yml";
 
     private static final String CONFIG_HEADER = """
-            Hawkeye configuration. /hawkeye reload applies the logging, lookup, rollback, purge, archive and
-            error-reports sections; server, storage, writer and network changes need a restart.
+            Hawkeye configuration. /hawkeye reload applies the logging, lookup, rollback, purge, archive,
+            error-reports and experimental sections; server, storage, writer and network changes need a restart.
             Database and Redis credentials are best read from environment variables: ${NAME} in a value.
             """;
 

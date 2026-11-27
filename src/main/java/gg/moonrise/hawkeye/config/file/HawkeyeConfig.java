@@ -56,6 +56,10 @@ public final class HawkeyeConfig {
             "on join. Every key takes effect on /hawkeye reload."})
     private ErrorReportSettings errorReports = new ErrorReportSettings();
 
+    @Comment({"Features still being tried out: off by default, and they may change or go away in any release.",
+            "Every switch takes effect on /hawkeye reload."})
+    private ExperimentalSettings experimental = new ExperimentalSettings();
+
     /**
      * Problems that make this configuration unusable, an unset environment variable among them.
      *

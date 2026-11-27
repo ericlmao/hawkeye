@@ -14,6 +14,7 @@ import gg.moonrise.hawkeye.support.TestCommandManager;
 import gg.moonrise.hawkeye.support.TestCommandSource;
 import gg.moonrise.hawkeye.support.TestHawkeyePlugin;
 import gg.moonrise.hawkeye.support.TestPlugins;
+import gg.moonrise.hawkeye.support.dialog.DialogPlayer;
 import gg.moonrise.hawkeye.ui.lookup.AwaitReplies;
 import gg.moonrise.moss.paper.MossPaper;
 import java.util.ArrayList;
@@ -35,6 +36,7 @@ import org.mockbukkit.mockbukkit.entity.PlayerMock;
 public class LookupCommandTest {
 
     private ServerMock server;
+    private TestHawkeyePlugin plugin;
     private TestCommandManager commands;
     private ConsoleCommandSenderMock console;
     private World world;
@@ -43,7 +45,7 @@ public class LookupCommandTest {
     @BeforeEach
     public void setUp() {
         server = MockBukkit.mock();
-        TestHawkeyePlugin plugin = TestPlugins.load();
+        plugin = TestPlugins.load();
         // Only the events each test records: no join events for the player added below.
         TestPlugins.writeConfig(plugin, "logging:\n  sessions: false\n  join-snapshots: false\n");
         TestPlugins.reload();
@@ -205,6 +207,36 @@ public class LookupCommandTest {
         List<String> virtual = AwaitReplies.reply(server, console);
         assertEquals(2, virtual.size(), virtual.toString());
         assertTrue(virtual.get(1).contains("Alex added 3x emerald to ender_chest"), virtual.get(1));
+    }
+
+    @Test
+    public void withTheDialogSwitchOffAPlayerGetsChatLines() {
+        DialogPlayer steve = new DialogPlayer(server, "Steve");
+        server.addPlayer(steve);
+        steve.setOp(true);
+        TestPlugins.drain(steve);
+        LookupFixtures.breaks(Actors.of(alex), world, 2);
+
+        commands.run(steve, "hawkeye lookup");
+        List<String> reply = AwaitReplies.reply(server, steve);
+
+        assertEquals(3, reply.size(), reply.toString());
+        assertEquals("----- Hawkeye results -----", reply.getFirst());
+        assertEquals(0, steve.dialogCount());
+    }
+
+    @Test
+    public void withTheDialogSwitchOnTheConsoleStillGetsChatLines() {
+        TestPlugins.writeConfig(plugin, "logging:\n  sessions: false\n  join-snapshots: false\n"
+                + "experimental:\n  dialog-lookup: true\n");
+        TestPlugins.reload();
+        LookupFixtures.breaks(Actors.of(alex), world, 2);
+
+        commands.run(console, "hawkeye lookup");
+        List<String> reply = AwaitReplies.reply(server, console);
+
+        assertEquals(3, reply.size(), reply.toString());
+        assertEquals("----- Hawkeye results -----", reply.getFirst());
     }
 
     private static List<String> clicks(Component component) {

@@ -9,7 +9,9 @@ import gg.moonrise.hawkeye.core.service.capture.EventRecorder;
 import gg.moonrise.hawkeye.core.service.inspect.InspectorService;
 import gg.moonrise.hawkeye.entity.action.Action;
 import gg.moonrise.hawkeye.support.TestCommandManager;
+import gg.moonrise.hawkeye.support.TestHawkeyePlugin;
 import gg.moonrise.hawkeye.support.TestPlugins;
+import gg.moonrise.hawkeye.support.dialog.DialogPlayer;
 import gg.moonrise.hawkeye.ui.lookup.AwaitReplies;
 import java.util.List;
 import net.kyori.adventure.text.Component;
@@ -37,6 +39,7 @@ import org.mockbukkit.mockbukkit.entity.PlayerMock;
 public class InspectorListenerTest {
 
     private ServerMock server;
+    private TestHawkeyePlugin plugin;
     private World world;
     private PlayerMock alex;
     private EventRecorder recorder;
@@ -45,7 +48,7 @@ public class InspectorListenerTest {
     @BeforeEach
     public void setUp() {
         server = MockBukkit.mock();
-        TestPlugins.load();
+        plugin = TestPlugins.load();
         TestPlugins.awaitStorage();
         world = server.addSimpleWorld("world");
         alex = server.addPlayer("Alex");
@@ -222,6 +225,30 @@ public class InspectorListenerTest {
         server.getPluginManager().callEvent(new PlayerQuitEvent(alex, Component.empty(),
                 PlayerQuitEvent.QuitReason.DISCONNECTED));
         assertFalse(inspector.isInspecting(alex.getUniqueId()));
+    }
+
+    @Test
+    public void withTheDialogSwitchOnAClickStillAnswersInChat() {
+        TestPlugins.writeConfig(plugin, "experimental:\n  dialog-lookup: true\n");
+        TestPlugins.reload();
+        DialogPlayer steve = new DialogPlayer(server, "Steve");
+        server.addPlayer(steve);
+        steve.setOp(true);
+        steve.setLocation(new Location(world, 0, 64, 0));
+        TestPlugins.drain(steve);
+        inspector.toggle(steve.getUniqueId());
+        Block block = block(5, 64, 5, Material.STONE);
+        placeAndBreak(5, 64, 5);
+
+        PlayerInteractEvent click = new PlayerInteractEvent(steve, org.bukkit.event.block.Action.LEFT_CLICK_BLOCK,
+                null, block, BlockFace.UP, EquipmentSlot.HAND);
+        server.getPluginManager().callEvent(click);
+
+        assertTrue(cancelled(click));
+        List<String> reply = AwaitReplies.reply(server, steve);
+        assertEquals("----- Hawkeye 5 64 5 -----", reply.getFirst());
+        assertEquals(3, reply.size(), reply.toString());
+        assertEquals(0, steve.dialogCount());
     }
 
     private Block block(int x, int y, int z, Material type) {

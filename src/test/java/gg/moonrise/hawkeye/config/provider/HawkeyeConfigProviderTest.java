@@ -126,6 +126,17 @@ public class HawkeyeConfigProviderTest {
     }
 
     @Test
+    public void theExperimentalSwitchesApplyOnReload() {
+        assertFalse(provider.get().experimental().dialogLookup());
+        TestPlugins.writeConfig(plugin, "experimental:\n  dialog-lookup: true\n");
+
+        ReloadResult.Reloaded reloaded = assertInstanceOf(ReloadResult.Reloaded.class, provider.reloadConfig());
+
+        assertEquals(List.of(), reloaded.restartRequired());
+        assertTrue(provider.get().experimental().dialogLookup());
+    }
+
+    @Test
     public void defaultsAreValid() {
         assertEquals(List.of(), new HawkeyeConfig().problems(name -> Optional.empty()));
     }
