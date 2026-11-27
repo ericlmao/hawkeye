@@ -863,7 +863,7 @@ new top-level package (or a new `core.*` package) goes into a layer there in the
 | Plugin | the root package | `HawkeyePlugin` only; may use any layer |
 | Loader | `loader` | `HawkeyePluginLoader` (runtime libraries) |
 | Player-facing | `command` (`command.registry`, `command.query`), `listener.<family>`, `ui.<feature>`, `integration.api` (`type`, `indicator` are reserved) | Cloud commands, Bukkit listeners, chat output, the `HawkeyeApi` implementation other plugins call |
-| Service | `core.service.<feature>` (`capture`, `diagnostic`, `importer`, `inspect`, `lookup`, `network`, `purge`, `query`, `rollback`, `status`, `thread`) | Use cases: recording, imports, lookups, rollbacks, purges, network jobs, status |
+| Service | `core.service.<feature>` (`capture`, `dev`, `diagnostic`, `importer`, `inspect`, `lookup`, `network`, `purge`, `query`, `rollback`, `status`, `thread`) | Use cases: recording, imports, fake data (dev mode), lookups, rollbacks, purges, network jobs, status |
 | Backend | `core.repository.<table group>`, `core.sql`, `core.storage.<part>`, `core.queue.<part>`, `core.bus`, `core.scheduler`, `core.time`, `core.diagnostic` | Repositories and SQL, the storage engine, the write queue and spool, the cross-server bus, executors, the clock, the error and crash files |
 | Bottom | `entity.<concept>`, `config.<part>` (`env`, `file`, `message`, `provider`, `permission`), `util.<part>` (`codec`, `codec.binary`, `compat` (server API gates, server software), `event`, `log` (log markers), `nbt`, `position`, `redact`, `serialize`, `text`), `api` | Data model, config model, pure helpers, the public API types |
 
@@ -880,6 +880,7 @@ subpackages; `ArchitectureTest` checks that list:
 | `core.queue` | `event` (`EventQueue`, `EventWriter`), `spool` (`EventSpool`, `SpoolReplay`), `id` (`IdAssigner`) |
 | `core.service.capture` | root: `EventRecorder`, `Actors`, `CauseTracker`, `KillCauses`; `block`, `container`, `text` |
 | `core.service.importer` | root: `ImportService` and its outcome, progress, listener; `pipeline` (the run loop, table merge, segment writer), `mapping` (root: `RowMapper`, `RowBase`, `MappedRow`, `SourceNameResolver`; `block`, `item`, `sign`) |
+| `core.service.dev` | root: `DevDataService` and its request, world, outcome, progress, listener; `pipeline` (the run loop); `fake` (the fake server model, no server or database) |
 | `core.service.lookup` | root: `LookupService`, `LookupMerge` and the shard results, outcome, total, warning; `page` (`LookupPager`, sessions, page views) |
 | `core.service.query` | root: `QueryBuilder`, `QueryContext`, `QueryTargets`, `BuildResult`; `syntax` (`QuerySyntax`, `QueryParameters`, `QueryFlag`, `QueryError`, `ActionAliases`), `catalog` (`TypeCatalog`) |
 | `command` | root: the `PaperCommand` beans only; `registry` (`HawkeyeCommandRegistry`), `query` (`QueryInput`). Permission nodes are `config.permission.Permissions` (also used by listeners) |
