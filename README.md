@@ -111,7 +111,7 @@ With `/he inspect` on:
 - **Left-click** a block to see its history (the block isn't broken).
 - **Right-click** a container, lectern, jukebox, bookshelf, pot or shelf to see its transactions.
 - **Right-click** any other block to see the block in front of the clicked face.
-- **Place** a block to see that spot (the placement is cancelled).
+- **Right-click** with a block in hand to see the spot it would fill (nothing is placed).
 
 ## ► Parameters
 

@@ -129,15 +129,41 @@ public class InspectorListenerTest {
     }
 
     @Test
-    public void rightClickWithABlockLeavesThePlacementToShowTheSpot() {
+    public void rightClickWithABlockShowsTheSpotItWouldFill() {
         Block block = block(5, 64, 5, Material.STONE);
+        placeAndBreak(5, 65, 5);
 
         PlayerInteractEvent click = click(org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK,
                 new ItemStack(Material.DIRT), block);
 
-        assertEquals(Event.Result.DENY, click.useInteractedBlock());
-        assertEquals(Event.Result.DEFAULT, click.useItemInHand());
-        assertTrue(AwaitReplies.during(server, alex, 200).isEmpty());
+        assertTrue(cancelled(click));
+        List<String> reply = AwaitReplies.reply(server, alex);
+        assertEquals("----- Hawkeye 5 65 5 -----", reply.getFirst());
+    }
+
+    @Test
+    public void rightClickWithABlockOnAReplaceableBlockShowsThatBlock() {
+        Block grass = block(7, 64, 7, Material.SHORT_GRASS);
+        placeAndBreak(7, 64, 7);
+
+        PlayerInteractEvent click = click(org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK,
+                new ItemStack(Material.DIRT), grass);
+
+        assertTrue(cancelled(click));
+        List<String> reply = AwaitReplies.reply(server, alex);
+        assertEquals("----- Hawkeye 7 64 7 -----", reply.getFirst());
+    }
+
+    @Test
+    public void rightClickWithAnEmptyHandOnAReplaceableBlockShowsTheBlockAbove() {
+        Block grass = block(7, 64, 7, Material.SHORT_GRASS);
+        placeAndBreak(7, 65, 7);
+
+        PlayerInteractEvent click = click(org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK, null, grass);
+
+        assertTrue(cancelled(click));
+        List<String> reply = AwaitReplies.reply(server, alex);
+        assertEquals("----- Hawkeye 7 65 7 -----", reply.getFirst());
     }
 
     @Test
