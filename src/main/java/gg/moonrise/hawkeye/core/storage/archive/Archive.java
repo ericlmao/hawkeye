@@ -15,7 +15,6 @@ import gg.moonrise.hawkeye.core.storage.index.place.IdRuns;
 import gg.moonrise.hawkeye.core.storage.index.place.SegmentPlaces;
 import gg.moonrise.hawkeye.core.storage.segment.ByteRange;
 import gg.moonrise.hawkeye.core.storage.segment.ColumnRules;
-import gg.moonrise.hawkeye.core.storage.segment.PackedSegment;
 import gg.moonrise.hawkeye.core.storage.segment.Palettes;
 import gg.moonrise.hawkeye.core.storage.segment.SegmentHeader;
 import gg.moonrise.hawkeye.core.storage.segment.SegmentMatch;
@@ -49,6 +48,7 @@ import java.util.function.LongPredicate;
 import java.util.function.Predicate;
 import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -64,9 +64,13 @@ import org.jetbrains.annotations.Nullable;
  * {@link EventFilter#matchesId}). Rolled-back flags
  * live beside the segments ({@code segment_flag}); a purge deletes or rewrites whole segments. The
  * {@link SegmentIndex} is changed in every transaction that writes or rewrites a segment, and a read it
- * narrows asks only the segments it names. Every method but {@link #compact}, {@link #totals} and
- * {@link #catchUpIndex} runs on the caller's connection and transaction.
+ * narrows asks only the segments it names. A new segment is encoded before its transaction begins
+ * ({@link #prepare}) and stored inside it ({@link #store}), so the write lock is held only for the write.
+ * Every method but {@link #compact}, {@link #prepareCompaction}, {@link #commitCompaction},
+ * {@link #prepare}, {@link #totals} and {@link #catchUpIndex} runs on the caller's connection and
+ * transaction.
  */
+@Slf4j
 @SpringComponent
 @RequiredArgsConstructor
 public final class Archive {
@@ -86,28 +90,37 @@ public final class Archive {
     /** Compresses frames on the calling thread: no burst of cores on a game server. */
     public static final Executor CALLING_THREAD = Runnable::run;
 
+    /**
+     * How many times one {@link #compact} call reads and encodes again after the hot rows it read changed
+     * before it could store them (a rollback flag, a purge); then it packs nothing and the next run tries.
+     */
+    public static final int COMPACT_ATTEMPTS = 3;
+
     private final @NotNull EventRepository eventRepository;
     private final @NotNull SegmentRepository segmentRepository;
     private final @NotNull SegmentCache cache;
     private final @NotNull SegmentIndex segmentIndex;
 
     /**
-     * One packing pass, in one transaction: takes the {@code segment-events} oldest hot events that are
-     * older than {@code settle-seconds} and packs them as one segment, when there are that many or when
-     * the oldest is older than {@code after-hours}. Run passes until one returns 0.
+     * One packing pass: takes the {@code segment-events} oldest hot events that are older than
+     * {@code settle-seconds} and packs them as one segment, when there are that many or when the oldest
+     * is older than {@code after-hours}. Run passes until one returns 0. The rows are read and encoded
+     * without a lock ({@link #prepareCompaction}); one short transaction then checks that they are
+     * unchanged, stores the segment and deletes them ({@link #commitCompaction}). When they changed
+     * meanwhile the pass reads again, up to {@link #COMPACT_ATTEMPTS} times.
      *
      * @param shard     the shard
      * @param settings  the archive settings
      * @param nowMillis the current time in Unix milliseconds
-     * @return the number of events packed; 0 when there is nothing to do
+     * @return the number of events packed; 0 when there is nothing to do, or the rows kept changing
      * @throws SQLException when reading or writing fails (the transaction is rolled back)
      */
     public int compact(@NotNull Shard shard, @NotNull ArchiveSettings settings, long nowMillis) throws SQLException {
         Database database = shard.database();
         Sql sql = database.sql();
         int limit = settings.segmentEvents();
-        long belowId = EventIds.floor(nowMillis - Duration.ofSeconds(settings.settleSeconds()).toMillis());
-        long oldBound = EventIds.floor(nowMillis - Duration.ofHours(settings.afterHours()).toMillis());
+        long belowId = belowId(settings, nowMillis);
+        long oldBound = oldBound(settings, nowMillis);
         boolean due = database.read(connection -> {
             long oldest = eventRepository.oldestId(connection, sql);
             if (oldest == 0 || oldest >= belowId) {
@@ -118,35 +131,103 @@ public final class Archive {
         if (!due) {
             return 0;
         }
-        return database.transaction(connection -> {
-            List<EventRow> rows = eventRepository.oldestForArchive(connection, sql, belowId, limit);
-            if (rows.isEmpty() || rows.size() < limit && rows.getFirst().id() >= oldBound) {
+        for (int attempt = 0; attempt < COMPACT_ATTEMPTS; attempt++) {
+            Optional<PreparedSegment> prepared = prepareCompaction(shard, settings, nowMillis);
+            if (prepared.isEmpty()) {
                 return 0;
             }
-            pack(connection, shard, rows, CALLING_THREAD);
-            eventRepository.deleteIds(connection, sql, rows.stream().map(EventRow::id).toList());
-            return rows.size();
+            if (commitCompaction(shard, prepared.get())) {
+                return prepared.get().rows().size();
+            }
+        }
+        log.debug("Archiving on shard {} stopped: the hot rows changed under {} passes in a row; the next run "
+                + "tries again", shard.name(), COMPACT_ATTEMPTS);
+        return 0;
+    }
+
+    /**
+     * The first step of a packing pass: reads the candidate rows in auto-commit mode, without a lock, and
+     * encodes them with no connection borrowed.
+     *
+     * @param shard     the shard
+     * @param settings  the archive settings
+     * @param nowMillis the current time in Unix milliseconds
+     * @return the encoded segment; empty when there are too few settled rows and the oldest is not old
+     *         enough
+     * @throws SQLException when reading fails
+     */
+    public @NotNull Optional<PreparedSegment> prepareCompaction(@NotNull Shard shard, @NotNull ArchiveSettings settings,
+            long nowMillis) throws SQLException {
+        Database database = shard.database();
+        int limit = settings.segmentEvents();
+        long belowId = belowId(settings, nowMillis);
+        List<EventRow> rows = database.read(connection -> eventRepository.oldestForArchive(connection, database.sql(),
+                belowId, limit));
+        if (rows.isEmpty() || rows.size() < limit && rows.getFirst().id() >= oldBound(settings, nowMillis)) {
+            return Optional.empty();
+        }
+        return Optional.of(prepare(shard, rows, CALLING_THREAD));
+    }
+
+    /**
+     * The second step of a packing pass, in one short transaction: locks the hot rows in the prepared id
+     * range and checks every prepared row is still there with the same flags, then stores the segment and
+     * deletes the rows. A row written into the range after the read is not in the segment and stays hot.
+     *
+     * @param shard    the shard
+     * @param prepared what {@link #prepareCompaction} returned
+     * @return {@code true} when stored; {@code false} when a row was deleted or its flags changed since it
+     *         was read (nothing is written)
+     * @throws SQLException when reading or writing fails (the transaction is rolled back)
+     */
+    public boolean commitCompaction(@NotNull Shard shard, @NotNull PreparedSegment prepared) throws SQLException {
+        Sql sql = shard.database().sql();
+        List<Long> ids = prepared.rows().stream().map(EventRow::id).toList();
+        return shard.database().transaction(connection -> {
+            if (!eventRepository.lockUnchanged(connection, sql, prepared.rows())) {
+                return false;
+            }
+            store(connection, shard, prepared);
+            int deleted = eventRepository.deleteIds(connection, sql, ids);
+            if (deleted != ids.size()) {
+                throw new SQLException("archiving deleted " + deleted + " of " + ids.size() + " locked hot rows");
+            }
+            return true;
         });
     }
 
     /**
-     * Writes rows as one segment without touching the hot table (packing, bulk imports). The rows'
-     * rolled-back flags go to the segment's flag row.
+     * Encodes rows as one segment, before the transaction that stores it: reads the world order on a short
+     * connection of its own and compresses with none borrowed. The rows' rolled-back flags go to the
+     * segment's flag row.
+     *
+     * @param shard    the shard
+     * @param rows     the rows, in any order, with distinct ids
+     * @param executor where the segment's frames are compressed
+     * @return the encoded segment, ready for {@link #store}
+     * @throws SQLException when a world is unknown or reading fails
+     * @throws IllegalArgumentException when the rows are empty or an id repeats
+     */
+    public @NotNull PreparedSegment prepare(@NotNull Shard shard, @NotNull List<EventRow> rows,
+            @NotNull Executor executor) throws SQLException {
+        List<Integer> order = shard.database().read(connection -> worldOrder(connection, shard, rows));
+        return new PreparedSegment(rows, Segments.encode(rows, order, executor));
+    }
+
+    /**
+     * Stores an encoded segment and adds it to the segment index, without touching the hot table
+     * (packing, bulk imports).
      *
      * @param connection a connection inside a transaction
      * @param shard      the shard
-     * @param rows       the rows, in any order, with distinct ids
-     * @param executor   where the segment's frames are compressed
+     * @param prepared   the segment {@link #prepare} encoded
      * @return the new segment's id
-     * @throws SQLException when a world is unknown or writing fails
-     * @throws IllegalArgumentException when the rows are empty or an id repeats
+     * @throws SQLException when writing fails
      */
-    public long pack(@NotNull Connection connection, @NotNull Shard shard, @NotNull List<EventRow> rows,
-            @NotNull Executor executor) throws SQLException {
-        Sql sql = shard.database().sql();
-        PackedSegment segment = Segments.encode(rows, worldOrder(connection, shard, rows), executor);
-        long id = segmentRepository.insert(connection, sql, segment);
-        segmentIndex.added(connection, shard, content(id, rows));
+    public long store(@NotNull Connection connection, @NotNull Shard shard, @NotNull PreparedSegment prepared)
+            throws SQLException {
+        long id = segmentRepository.insert(connection, shard.database().sql(), prepared.segment());
+        segmentIndex.added(connection, shard, content(id, prepared.rows()));
         return id;
     }
 
@@ -696,6 +777,14 @@ public final class Archive {
         Comparator<Integer> byKey = Comparator.comparing((Integer id) -> keys.get(id).scope())
                 .thenComparing(id -> keys.get(id).name());
         return ids.stream().sorted(byKey).toList();
+    }
+
+    private static long belowId(@NotNull ArchiveSettings settings, long nowMillis) {
+        return EventIds.floor(nowMillis - Duration.ofSeconds(settings.settleSeconds()).toMillis());
+    }
+
+    private static long oldBound(@NotNull ArchiveSettings settings, long nowMillis) {
+        return EventIds.floor(nowMillis - Duration.ofHours(settings.afterHours()).toMillis());
     }
 
     private static boolean anyWithin(long @NotNull [] sorted, long from, long to) {

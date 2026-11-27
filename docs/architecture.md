@@ -130,11 +130,25 @@ by `core.storage.archive.Archive` under the `archive` lease (one server per shar
 
 - **Packing.** Every `archive.interval-minutes` (1) a run packs the `archive.segment-events` (262,144)
   oldest hot events that are older than `archive.settle-seconds` (60) into one segment and deletes
-  them from `event`, in one transaction, and repeats until nothing is packed. Fewer events are packed
-  only once the oldest is older than `archive.after-hours` (24), so a quiet server is archived too, in
-  smaller segments. A segment holds any worlds and servers; segments are time slices whose id ranges
-  can overlap (a late event is packed after its neighbours). Packing compresses on the calling thread;
-  a bulk import (`EventStore.writeArchived`) compresses on a pool.
+  them from `event`, and repeats until nothing is packed. Fewer events are packed only once the oldest
+  is older than `archive.after-hours` (24), so a quiet server is archived too, in smaller segments. A
+  segment holds any worlds and servers; segments are time slices whose id ranges can overlap (a late
+  event is packed after its neighbours). A pass reads the rows in auto-commit mode without a lock,
+  encodes them with no connection borrowed (`Archive.prepareCompaction`, `Archive.prepare`), and then
+  runs one short transaction (`Archive.commitCompaction`): it locks the hot rows in the packed id range
+  (`FOR UPDATE` on MySQL and PostgreSQL) and checks that every packed row is still there with the same
+  `flags`, then stores the segment and deletes the rows. A row written into the range after the read
+  is not in the segment and stays hot. When a packed row was deleted or flagged meanwhile (a purge, a
+  rollback), the transaction writes nothing and the pass reads again; after `COMPACT_ATTEMPTS` (3) such
+  passes the run stops and the next one tries. So the event writer waits only for the short write of a
+  pass, never for its compression. Packing compresses on the calling thread; a bulk import
+  (`EventStore.writeArchived`) compresses on a pool, likewise before its transaction.
+- **Transactions on SQLite.** Every write transaction (`Database.transaction`) begins with `BEGIN
+  IMMEDIATE`, so it holds the database's write lock from its first statement, waiting for it under the
+  busy timeout (15 s). A deferred transaction that reads first would fail its first write at once
+  (`SQLITE_BUSY`, or `SQLITE_BUSY_SNAPSHOT` in WAL mode when another connection committed since its
+  read), whatever the busy timeout. The write lock is SQLite's equivalent of the `FOR UPDATE` row locks
+  the other engines take, so the statements that lock with `FOR UPDATE` elsewhere are plain reads there.
 - **Stored order.** Unplaced rows by id, then placed rows by (world index in the world order,
   position, id); the world order is the worlds by (scope, name), the order the writer ranks in. Rows
   are numbered 0..n-1 in this order (*ordinals*) and cut into *units* of 16,384 rows; unplaced and
@@ -271,8 +285,9 @@ rows).
   segments holding rows of that actor, as `IdRuns` bytes against 0 without a compression frame (rows
   are a few bytes to a few hundred), and `newest`, the largest id. What a segment contributes to the
   index travels as one value (`SegmentContent`: its places and its sorted distinct actor ids).
-- **Writing.** `Archive.pack` (compaction, bulk import, purge rewrite) updates the index in the
-  transaction that inserts the segment. Every writer first locks the `segment_index` row (`FOR UPDATE`
+- **Writing.** Storing a new segment (`Archive.store` for compaction and bulk imports, `Archive.purge`'s
+  rewrite) updates the index in the transaction that inserts the segment; compaction and imports encode
+  the segment before that transaction begins, a purge rewrite still encodes inside it. Every writer first locks the `segment_index` row (`FOR UPDATE`
   on MySQL and PostgreSQL), so two writers never rewrite a row from the same old version. The region
   rows of the segment's chunks get its id, and so do the actor rows of every actor it holds (the
   distinct actors of the packed rows; the header's actor list when catching up: the same set); a chunk that now crosses `BUSY_SEGMENTS` gets a

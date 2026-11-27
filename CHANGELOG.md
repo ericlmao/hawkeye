@@ -44,6 +44,12 @@ second release in a quarter).
 
 - Right-clicking with a block in hand while inspecting now shows the history of the spot the block would fill;
   it used to do nothing.
+- On SQLite, archiving failed with `SQLITE_BUSY_SNAPSHOT ... database is locked` (or `SQLITE_BUSY`) whenever
+  another write committed while it ran, so a busy server's hot table was never archived ("Archiving failed; it is
+  retried on the next run" every run). Purges of archived events, the segment index catch-up, rollback flags of
+  archived events and imports failed the same way. Every write transaction on SQLite now takes the write lock
+  when it begins. Archiving also reads and compresses a segment before its transaction, so the event writer
+  waits only for the short write of a pass, not for its compression.
 
 ### Tests
 
