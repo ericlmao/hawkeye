@@ -213,6 +213,7 @@ reply tells you).
 | `archive` | `enabled`, `segment-events` (262144), `settle-seconds` (60), `after-hours` (24), `interval-minutes` (1) |
 | `error-reports` | `webhook-url` (a Discord webhook, empty for none), `webhook-errors`, `webhook-crashes`, `join-notice` |
 | `experimental` | `dialog-lookup`: lookups as a dialog (off by default) |
+| `dev-mode` | `enabled`: for developing Hawkeye only, off by default; see [Dev mode](#dev-mode) |
 
 Every player-facing message is a MiniMessage template in `messages.yml`.
 

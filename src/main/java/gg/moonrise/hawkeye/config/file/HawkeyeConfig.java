@@ -60,6 +60,11 @@ public final class HawkeyeConfig {
             "Every switch takes effect on /hawkeye reload."})
     private ExperimentalSettings experimental = new ExperimentalSettings();
 
+    @Comment({"Dev mode is made for developing Hawkeye itself: experimenting with storage, baking fake data to try",
+            "lookups, rollbacks and the archive at scale, and other experiments. It is not meant to be used on any",
+            "real server, for any purpose. Leave it off. Takes effect on /hawkeye reload."})
+    private DevModeSettings devMode = new DevModeSettings();
+
     /**
      * Problems that make this configuration unusable, an unset environment variable among them.
      *

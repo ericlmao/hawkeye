@@ -874,7 +874,7 @@ subpackages; `ArchitectureTest` checks that list:
 
 | Package | Subpackages |
 |---|---|
-| `core.storage` | `shard` (`StorageManager`, `StorageState`, `Shard`, `Dictionaries`), `event` (`EventStore`, `QueryResolver`), `archive` (`Archive`, `Archiver`, `SegmentCache`), `segment` (archive format 2 codec), `index` (`SegmentIndex`, `PlaceIndex`, `ActorIndex`), `index.place` (place index row codecs), `importer` (`ImportStore`) |
+| `core.storage` | `shard` (`StorageManager`, `StorageState`, `Shard`, `Dictionaries`), `event` (`EventStore`, `QueryResolver`), `archive` (`Archive`, `Archiver`, `SegmentCache`), `segment` (archive format 2 codec), `index` (`SegmentIndex`, `PlaceIndex`, `ActorIndex`), `index.place` (place index row codecs), `importer` (`ImportStore`), `dev` (`DevDataStore`) |
 | `core.repository` | one per table group: `event`, `dictionary`, `archive` (`segment`, `segment_flag`), `index` (segment index tables), `network` (`server`, `job`, `lease`), `importer` (`import_state`); plus `coreprotect` (reading a CoreProtect database, split below) |
 | `core.repository.coreprotect` | `source` (`CoreProtectSources`, `CoreProtectSource`, `SourceLocator`), `schema` (`SourceDialect`, `SourceSchema`), `driver` (`DriverArtifact`, `DriverResolver`, `SourceDrivers`), `reader` (`TableScan`, `RowidScan`, `TimeScan`, `SourceRowMapper`, `SourceNamesReader`, `SpawnUuids`) |
 | `core.queue` | `event` (`EventQueue`, `EventWriter`), `spool` (`EventSpool`, `SpoolReplay`), `id` (`IdAssigner`) |

@@ -45,7 +45,8 @@ public final class HawkeyeConfigProvider implements Reloadable {
 
     private static final String CONFIG_HEADER = """
             Hawkeye configuration. /hawkeye reload applies the logging, lookup, rollback, purge, archive,
-            error-reports and experimental sections; server, storage, writer and network changes need a restart.
+            error-reports, experimental and dev-mode sections; server, storage, writer and network changes need
+            a restart.
             Database and Redis credentials are best read from environment variables: ${NAME} in a value.
             """;
 
@@ -130,6 +131,11 @@ public final class HawkeyeConfigProvider implements Reloadable {
             }
             Snapshot next = new Snapshot(config, messages, commands);
             Snapshot previous = current.getAndSet(next);
+            if (config.devMode().enabled() && (previous == null || !previous.config().devMode().enabled())) {
+                // INFO, never WARN: the error log files every WARN as a problem waiting for review.
+                log.info("Dev mode is on (config.yml: dev-mode.enabled): /hawkeye dev can write fake history into "
+                        + "this database. It is for developing Hawkeye, never for a real server.");
+            }
             return new ReloadResult.Reloaded(previous == null ? List.of() : restartOnly(previous, next));
         } catch (IOException | RuntimeException e) {
             return new ReloadResult.Failed(ConfigFailures.reason(e));

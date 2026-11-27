@@ -32,6 +32,11 @@ second release in a quarter).
   `hawkeye.network`, `#count`) that searches again; a count, an empty result or a refused parameter is shown
   above the form. New `messages.yml` section `lookup-dialog`. Needs Paper 1.21.7 or newer and a 1.21.6 or newer
   client; older servers, the console, the inspector and `/hawkeye page` keep the chat output.
+- Dev mode: a new `config.yml` section `dev-mode` with `enabled` (off by default; applied on `/hawkeye reload`)
+  for developing Hawkeye itself, never for a real server. While it is on, Hawkeye can write generated fake
+  history (fake players, places, inventories and every action) straight into the archive, each run under its own
+  server entry `<server.name>-dev`, `-dev-2`, ...; turning it off stops a running generation. The console says
+  so once at INFO whenever dev mode is turned on.
 
 ### Changed
 

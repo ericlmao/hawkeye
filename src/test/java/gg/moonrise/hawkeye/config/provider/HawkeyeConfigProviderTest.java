@@ -12,6 +12,7 @@ import gg.moonrise.hawkeye.config.file.LogCategory;
 import gg.moonrise.hawkeye.config.file.StorageLogin;
 import gg.moonrise.hawkeye.config.file.StorageSettings;
 import gg.moonrise.hawkeye.config.file.StorageType;
+import gg.moonrise.hawkeye.core.diagnostic.ConsoleLines;
 import gg.moonrise.hawkeye.support.TestHawkeyePlugin;
 import gg.moonrise.hawkeye.support.TestPlugins;
 import java.io.IOException;
@@ -20,6 +21,10 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LogEvent;
+import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +53,7 @@ public class HawkeyeConfigProviderTest {
         assertTrue(config.contains("flush-interval-millis: 500"), config);
         assertTrue(config.contains("table-prefix: hawkeye_"), config);
         assertTrue(config.contains("redacted-commands:"), config);
+        assertTrue(config.contains("\ndev-mode:\n"), config);
         String messages = Files.readString(plugin.getDataPath().resolve(HawkeyeConfigProvider.MESSAGES_FILE));
         assertTrue(messages.contains("block-break:"), messages);
         assertTrue(messages.contains("storage-not-ready:"), messages);
@@ -134,6 +140,44 @@ public class HawkeyeConfigProviderTest {
 
         assertEquals(List.of(), reloaded.restartRequired());
         assertTrue(provider.get().experimental().dialogLookup());
+    }
+
+    @Test
+    public void devModeAppliesOnReload() {
+        assertFalse(provider.get().devMode().enabled());
+        TestPlugins.writeConfig(plugin, "dev-mode:\n  enabled: true\n");
+
+        ReloadResult.Reloaded reloaded = assertInstanceOf(ReloadResult.Reloaded.class, provider.reloadConfig());
+
+        assertEquals(List.of(), reloaded.restartRequired());
+        assertTrue(provider.get().devMode().enabled());
+    }
+
+    @Test
+    public void turningDevModeOnIsAnnouncedOnceAtInfo() {
+        String name = HawkeyeConfigProvider.class.getName();
+        Level before = LogManager.getLogger(name).getLevel();
+        Configurator.setLevel(name, Level.INFO);
+        try (ConsoleLines console = ConsoleLines.attach()) {
+            TestPlugins.writeConfig(plugin, "dev-mode:\n  enabled: true\n");
+            assertInstanceOf(ReloadResult.Reloaded.class, provider.reloadConfig());
+            assertInstanceOf(ReloadResult.Reloaded.class, provider.reloadConfig());
+
+            List<LogEvent> announced = console.of(name).stream()
+                    .filter(event -> event.getMessage().getFormattedMessage().contains("Dev mode is on")).toList();
+            assertEquals(1, announced.size(), announced.toString());
+            assertEquals(Level.INFO, announced.getFirst().getLevel());
+
+            TestPlugins.writeConfig(plugin, "dev-mode:\n  enabled: false\n");
+            assertInstanceOf(ReloadResult.Reloaded.class, provider.reloadConfig());
+            TestPlugins.writeConfig(plugin, "dev-mode:\n  enabled: true\n");
+            assertInstanceOf(ReloadResult.Reloaded.class, provider.reloadConfig());
+            assertEquals(2, console.of(name).stream()
+                    .filter(event -> event.getMessage().getFormattedMessage().contains("Dev mode is on")).count(),
+                    "announced again after it was off");
+        } finally {
+            Configurator.setLevel(name, before);
+        }
     }
 
     @Test
