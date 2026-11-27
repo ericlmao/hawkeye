@@ -51,6 +51,9 @@ public class HawkeyeConfigProviderTest {
         String messages = Files.readString(plugin.getDataPath().resolve(HawkeyeConfigProvider.MESSAGES_FILE));
         assertTrue(messages.contains("block-break:"), messages);
         assertTrue(messages.contains("storage-not-ready:"), messages);
+        assertTrue(messages.contains("lookup-dialog:"), messages);
+        assertTrue(messages.contains("  filters-title:"), messages);
+        assertTrue(messages.contains("  count-only:"), messages);
         String commands = Files.readString(plugin.getDataPath().resolve(HawkeyeConfigProvider.COMMANDS_FILE));
         assertTrue(commands.contains("root-aliases:"), commands);
         assertTrue(commands.contains("subcommand-aliases:"), commands);
