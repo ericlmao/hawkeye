@@ -33,7 +33,8 @@ public final class SegmentIndexRepository {
 
     /**
      * The segment id from which on every segment is indexed, locking the state row until the transaction
-     * ends (MySQL and PostgreSQL; SQLite has a single writer).
+     * ends (MySQL and PostgreSQL; on SQLite a plain read, since the transaction already holds the database's
+     * write lock from its {@code BEGIN IMMEDIATE}, see {@code Database#transaction}).
      *
      * @param connection a connection inside a transaction
      * @param sql        the shard's SQL context

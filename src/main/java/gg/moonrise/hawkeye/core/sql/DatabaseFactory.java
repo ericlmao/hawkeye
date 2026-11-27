@@ -19,7 +19,8 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * Opens a HikariCP pool for a shard. SQLite runs in WAL mode (readers never block the writer) with
- * {@code synchronous=NORMAL} and a busy timeout; the server engines use the MariaDB and PostgreSQL
+ * {@code synchronous=NORMAL} and a busy timeout of 15 s, which is how long a write waits for the write
+ * lock (a {@link Database#transaction} takes it when it begins); the server engines use the MariaDB and PostgreSQL
  * drivers resolved by the plugin loader, through a {@link RedactingDataSource}: the user, the password
  * and the parameters (with their {@code ${NAME}} references resolved) are driver properties of that data
  * source only, so neither Hikari's configuration nor any URL holds them, and the drivers' messages reach

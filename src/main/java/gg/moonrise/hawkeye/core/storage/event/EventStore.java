@@ -7,6 +7,7 @@ import gg.moonrise.hawkeye.core.sql.Database;
 import gg.moonrise.hawkeye.core.sql.Sql;
 import gg.moonrise.hawkeye.core.sql.SqlWork;
 import gg.moonrise.hawkeye.core.storage.archive.Archive;
+import gg.moonrise.hawkeye.core.storage.archive.PreparedSegment;
 import gg.moonrise.hawkeye.core.storage.shard.Dictionaries;
 import gg.moonrise.hawkeye.core.storage.shard.Shard;
 import gg.moonrise.hawkeye.entity.action.Action;
@@ -81,8 +82,9 @@ public final class EventStore {
 
     /**
      * Writes a batch straight into the archive as one segment, resolved exactly like {@link #write}
-     * (bulk imports, benchmarks). The events must be older than anything the shard will still pack, and
-     * a retry writes the segment again: this is not idempotent.
+     * (bulk imports, benchmarks). The segment is encoded before its transaction begins, which then only
+     * stores it. The events must be older than anything the shard will still pack, and a retry writes the
+     * segment again: this is not idempotent.
      *
      * @param home     the home shard
      * @param node     the registration of the server the events belong to
@@ -98,7 +100,8 @@ public final class EventStore {
             return 0;
         }
         List<EventRow> rows = resolve(home, node, scope, events, true);
-        home.database().transaction(connection -> archive.pack(connection, home, rows, executor));
+        PreparedSegment prepared = archive.prepare(home, rows, executor);
+        home.database().transaction(connection -> archive.store(connection, home, prepared));
         return rows.size();
     }
 
@@ -106,7 +109,8 @@ public final class EventStore {
      * Writes imported history straight into the archive as one segment, like {@link #writeArchived},
      * with two differences: actors are interned without renaming one the shard already knows (the
      * source's name of a player may be older than the one this shard has seen), and {@code alongside}
-     * runs on the same connection inside the segment's transaction, after the segment is packed. When
+     * runs on the same connection inside the segment's transaction, after the segment is stored (it is
+     * encoded before that transaction begins). When
      * {@code alongside} throws, the segment is rolled back with it, so a checkpoint written there and
      * the segment always agree.
      *
@@ -127,8 +131,9 @@ public final class EventStore {
             return 0;
         }
         List<EventRow> rows = resolve(home, node, scope, events, false);
+        PreparedSegment prepared = archive.prepare(home, rows, executor);
         home.database().transaction(connection -> {
-            archive.pack(connection, home, rows, executor);
+            archive.store(connection, home, prepared);
             return alongside.run(connection);
         });
         return rows.size();
