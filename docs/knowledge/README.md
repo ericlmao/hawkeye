@@ -339,6 +339,9 @@ update them in the same change when you learn something durable or an entry stop
   entities, 446 skipped, the same on both servers because the generator is pure Java; creepers stood where
   none were before), no file under `errors`, then a 20-million run that answered `dev generate` with "already
   being generated", sent its first progress line 10 s after the start and stopped on `dev cancel`.
+  Run again on 26.3 after the merge that encodes segments outside their transaction: the same result. On this
+  host the server folders are `~/.cache/hawkeye-ref/dev-smoke` (Paper 26.3) and
+  `~/.cache/hawkeye-ref/dev-smoke-1.21.1` (Paper 1.21.1); both may be cleared.
 - Checked by hand on 26.3 (positions depend on the stream, so the scenario cannot name them): a chest a fake
   player had broken came back with its slots, the data fixers having upgraded them (`"minecraft:enchantments":
   {"minecraft:unbreaking": 2}` from the stored `{levels: {...}}`, `stored_enchantments`, `damage`), and a
