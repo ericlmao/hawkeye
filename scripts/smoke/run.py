@@ -3,7 +3,9 @@
     python3 -I scripts/smoke/run.py <server-dir> <scenario-file> [java]
 
 <server-dir> holds paper.jar, eula.txt and plugins/Hawkeye.jar. Each scenario line is a console command,
-optionally followed by " => <text>": the console output until the next command must contain that text.
+optionally followed by " => <text>": the console output until the next command must contain that text. The next
+command follows after three seconds, or once the text has come when it takes longer (a rollback, a batch of
+generated data), for which the runner waits up to a minute.
 The server is stopped after the last command; the exit status is 0 when every expectation held and Hawkeye
 logged no ERROR. The full console log is written to <server-dir>/smoke.log; Hawkeye's stack traces are in
 plugins/Hawkeye/errors and crash.
@@ -17,6 +19,8 @@ import threading
 import time
 
 COMMAND_WAIT_SECONDS = 3
+# How long an expected reply may take before it counts as missing.
+EXPECT_TIMEOUT_SECONDS = 60
 # Paper colours console output on a terminal that supports it (Windows does): matched text drops the codes.
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 START_TIMEOUT_SECONDS = 300
@@ -63,6 +67,11 @@ def main():
             process.stdin.flush()
             time.sleep(COMMAND_WAIT_SECONDS)
             reply = ANSI.sub("", "".join(lines[mark + 1:]))
+            waited = COMMAND_WAIT_SECONDS
+            while expected and expected not in reply and waited < EXPECT_TIMEOUT_SECONDS:
+                time.sleep(1)
+                waited += 1
+                reply = ANSI.sub("", "".join(lines[mark + 1:]))
             if expected and expected not in reply:
                 failures.append(f"{command!r}: expected {expected!r}")
         process.stdin.write("stop\n")

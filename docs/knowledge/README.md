@@ -184,8 +184,11 @@ update them in the same change when you learn something durable or an entry stop
   `pg_ctl`) and MariaDB from `ch.vorburger.mariaDB4j:mariaDB4j-db-linux64` (`scripts/mariadb-install-db`
   and `bin/mariadbd`), unpacked under `~/.cache` and started on local ports. Verified 2026-11-16 on
   MariaDB 11.4.5 and PostgreSQL 18.6.
-- `scripts/smoke/run.py <server-dir> <scenario>` boots a real Paper server from the console, runs a
-  scenario (`command => expected output`) and fails on a missing reply or a Hawkeye error in the log.
+- `scripts/smoke/run.py <server-dir> <scenario> [java]` boots a real Paper server from the console, runs a
+  scenario (`command => expected output`) and fails on a missing reply or a Hawkeye error in the log. The next
+  command follows after 3 s, or once the expected text has come, for which it waits up to 60 s (a rollback, a
+  batch of generated data). Paper 1.21.x needs Java 21 here (`/usr/lib/jvm/java-21-openjdk-amd64/bin/java`); the
+  default is the Temurin 25 Gradle downloaded.
   `scripts/smoke/tnt-rollback.txt` records TNT damage, then looks it up, rolls it back, restores and
   undoes it, checking the world with vanilla `/execute if block`; it needs a flat overworld. The
   server folder holds `paper.jar` (from `https://fill.papermc.io/v3/projects/paper/versions/26.3/builds`),
@@ -329,8 +332,29 @@ update them in the same change when you learn something durable or an entry stop
 - Dev and import events render with `lookup.remote-location` (`EventLines.location` compares the event's server
   with `server.name`), and `s:` does not filter by node (`QueryTargets.named` maps names to world scopes).
 - Fake items and entities carry `DataVersion` 3955 (Minecraft 1.21.1) in 1.21.1 component shapes
-  (`FakeItems`, `FakeEntities`); they read back through `ItemSummary`/`ItemDetails` in tests, but whether
-  every supported server deserializes them in a rollback has not been checked on a real server yet.
+  (`FakeItems`, `FakeEntities`), and real servers load them. `scripts/smoke/dev-data.txt` (it needs
+  `dev-mode.enabled: true`, a fresh database and world, a flat overworld) passed on this Linux host on Paper
+  26.3 build 253 (Java 25) and Paper 1.21.1 build 133 (Java 21), SQLite: validation replies, 5,000 events
+  generated and looked up, a rollback of everything in the overworld (3,688 events: 2,889 blocks, 162
+  entities, 446 skipped, the same on both servers because the generator is pure Java; creepers stood where
+  none were before), no file under `errors`, then a 20-million run that answered `dev generate` with "already
+  being generated", sent its first progress line 10 s after the start and stopped on `dev cancel`.
+- Checked by hand on 26.3 (positions depend on the stream, so the scenario cannot name them): a chest a fake
+  player had broken came back with its slots, the data fixers having upgraded them (`"minecraft:enchantments":
+  {"minecraft:unbreaking": 2}` from the stored `{levels: {...}}`, `stored_enchantments`, `damage`), and a
+  painting with `block_pos` from the stored `TileX`/`TileY`/`TileZ`.
+- A hanging entity's snapshot needs its place. With only `{id, DataVersion}`, 26.3 logged `Block-attached entity
+  at invalid position: null` (an ERROR of the server, not of Hawkeye, so no error file) for each fake painting
+  or item frame a rollback loaded; with `Pos`, `TileX`/`TileY`/`TileZ` and the facing it logs nothing.
+- Fake places ignore the terrain: a mob respawned inside the bedrock layer falls out of the world, and most
+  fake paintings and item frames have no wall behind them and pop off as items.
+- Speed on this shared host (SQLite, 3 pack threads, load 5 and more): about 25,000 to 65,000 events a second in
+  262,144-event segments; 1,885,041 fake events were 12.2 MB in 8 segments by `/hawkeye status` (6.5 B/event).
+  With the minimum of 8 players nearly every event of a 5,000-event run is in the first world; a larger run
+  has 5 to 8% in the others (players reach them by teleporting and stay a while).
+- Paper 1.21.1 generates a flat world with entities in it (15 in the 32x32 chunks around the spawn; 26.3 had
+  none), and prints `Test passed, count: N` where 26.3 prints `Test passed. Count: N`: a scenario for both
+  matches `Test passed` and counts a mob nothing spawns with nobody online.
 - The dev generator (`core.service.dev.fake`, main) and the benchmark's `Synthetic*` (test sources) are separate
   on purpose: the benchmark's stream (random gzip-like payloads, a boat entity id 1.21.1 lacks) backs its
   published figures, the dev one must be real, decodable NBT.

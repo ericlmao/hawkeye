@@ -1,0 +1,33 @@
+# Dev mode on a real server: fake data is generated, looked up and rolled back (which loads the fake item and
+# entity NBT through the server), then a long run reports its progress and is cancelled.
+# Needs dev-mode.enabled: true in plugins/Hawkeye/config.yml (a file holding only that section will do), a fresh
+# database and world, a flat overworld (level-type=minecraft:flat) and nobody online.
+hawkeye status => connected
+hawkeye dev status => No fake data is being generated
+hawkeye dev cancel => No fake data is being generated
+hawkeye dev generate 0 => The number of events must be at least 1
+hawkeye dev generate 10 0 => The number of days must be at least 1
+hawkeye dev generate 5000 2 => Fake data done: 5000 event(s) by 8 fake player(s) written as server-dev
+hawkeye lookup t:3d r:#world #count => Matching events:
+hawkeye lookup a:chat t:3d r:#world => said
+hawkeye lookup a:kill t:3d r:#world => killed
+hawkeye lookup u:SteveCraft a:-block t:3d r:#world => SteveCraft broke
+# The eight fake players live within 192 blocks of the world spawn: load that land, so what the rollback respawns
+# stays. Nothing spawns creepers with nobody online, so the ones found afterwards are fake kills brought back.
+forceload add -256 -256 -1 -1
+forceload add 0 -256 255 -1
+forceload add -256 0 -1 255
+forceload add 0 0 255 255
+execute if entity @e[type=minecraft:creeper] => Test failed
+hawkeye rollback t:3d r:#world => Finished the rollback
+execute if entity @e[type=minecraft:creeper] => Test passed
+hawkeye errors => No error or crash report waits to be reviewed
+# 20 million events take minutes: the status reply comes at once, the first progress line 10 seconds after the
+# start.
+hawkeye dev generate 20000000 30 => Generating 20000000 fake event(s) over the last 30 day(s) as server-dev-2
+hawkeye dev generate 5 => Fake data is already being generated
+hawkeye dev status => Generating: 
+hawkeye dev cancel => Generating stopped after
+hawkeye dev status => No fake data is being generated
+hawkeye lookup t:30d r:#world #count => Matching events:
+hawkeye errors => No error or crash report waits to be reviewed

@@ -72,7 +72,7 @@ public class DevCommandTest {
         }
         server.getScheduler().performTicks(5);
         assertEquals(List.of(), TestPlugins.drain(console));
-        assertEquals(0, all().size());
+        assertEquals(0, fake().size());
     }
 
     @Test
@@ -86,7 +86,7 @@ public class DevCommandTest {
                 + "follow it.", replies.getFirst());
         String done = replies.getLast();
         assertTrue(done.startsWith("Fake data done: 200 event(s) by 8 fake player(s) written as server-dev in "), done);
-        assertEquals(200, all().size());
+        assertEquals(200, fake().size());
     }
 
     @Test
@@ -109,7 +109,7 @@ public class DevCommandTest {
         commands.run(console, "hawkeye dev generate 10 0");
         assertEquals(List.of("The number of days must be at least 1."),
                 RollbackTestSupport.tickUntilReply(server, console, "must be"));
-        assertEquals(0, all().size());
+        assertEquals(0, fake().size());
     }
 
     @Test
@@ -196,7 +196,7 @@ public class DevCommandTest {
         }
         server.getScheduler().performTicks(5);
         assertTrue(TestPlugins.drain(steve).isEmpty());
-        assertEquals(0, all().size());
+        assertEquals(0, fake().size());
 
         steve.addAttachment(plugin, Permissions.DEV, true);
         commands.run(steve, "he dev status");
@@ -215,7 +215,7 @@ public class DevCommandTest {
         commands.run(steve, "he dev generate 300 2");
 
         RollbackTestSupport.tickUntilReply(server, steve, DONE);
-        List<StoredEvent> stored = all();
+        List<StoredEvent> stored = fake();
         assertEquals(300, stored.size());
         Set<String> names = server.getWorlds().stream().map(World::getName).collect(Collectors.toSet());
         assertTrue(stored.stream().allMatch(event -> names.contains(event.world())), stored.toString());
@@ -240,9 +240,15 @@ public class DevCommandTest {
                 });
     }
 
-    private static @NotNull List<StoredEvent> all() throws SQLException {
+    /**
+     * Every fake event: what the dev nodes hold. What the plugin records itself (a test player's join and
+     * inventory snapshot) is left out, since the writer may or may not have flushed it yet.
+     */
+    private static @NotNull List<StoredEvent> fake() throws SQLException {
         return TestPlugins.bean(EventStore.class).find(TestPlugins.awaitStorage().home(),
-                LookupQuery.at(new Area.Everywhere()), new ShardScope.All(), 0, 100_000, false);
+                LookupQuery.at(new Area.Everywhere()), new ShardScope.All(), 0, 100_000, false).stream()
+                .filter(event -> event.server().contains("-dev"))
+                .toList();
     }
 
     private static void await(@NotNull CountDownLatch latch) {

@@ -57,6 +57,9 @@ second release in a quarter).
 
 - The tests log through SLF4J into a real log4j-core (`src/test/resources/log4j2-test.xml`: WARN and above, printed
   nowhere), as plugins do on a server, so the error log's filter is tested where it runs.
+- `scripts/smoke/dev-data.txt` runs dev mode on a real server: fake data is generated, looked up and rolled
+  back, and a long run reports its progress and is cancelled. `scripts/smoke/run.py` now waits up to a minute
+  for an expected reply that takes longer than three seconds.
 
 ## [26.4] - 2026-11-26
 
