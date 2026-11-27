@@ -18,6 +18,8 @@ import gg.moonrise.hawkeye.entity.event.PendingEvent;
 import gg.moonrise.hawkeye.entity.payload.Payload;
 import gg.moonrise.hawkeye.util.codec.PayloadCodec;
 import gg.moonrise.hawkeye.util.event.EventIds;
+import gg.moonrise.hawkeye.util.nbt.NbtRoot;
+import gg.moonrise.hawkeye.util.nbt.NbtTag;
 import gg.moonrise.hawkeye.util.position.BlockPositions;
 import gg.moonrise.hawkeye.util.serialize.ItemDetails;
 import gg.moonrise.hawkeye.util.serialize.ItemSummary;
@@ -33,6 +35,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 public class FakeServerTest {
@@ -247,7 +250,7 @@ public class FakeServerTest {
                 switch (action) {
                     case ENTITY_KILL -> assertEquals(event.subject().equals("minecraft:player"), payload == null);
                     case ENTITY_SPAWN -> assertTrue(payload instanceof Payload.EntityRef);
-                    case ENTITY_REMOVE -> assertTrue(payload instanceof Payload.Entity);
+                    case ENTITY_REMOVE -> assertHangsAtTheEvent(event, (Payload.Entity) payload);
                     case ENTITY_NAME, ENTITY_DYE -> assertTrue(payload instanceof Payload.Text);
                     default -> assertNull(payload);
                 }
@@ -325,5 +328,20 @@ public class FakeServerTest {
             events.add(server.next());
         }
         return events;
+    }
+
+    /** A removed painting or item frame names the event's own block; other objects name no place. */
+    private static void assertHangsAtTheEvent(@NotNull PendingEvent event, @Nullable Payload.Entity entity) {
+        assertNotNull(entity, event.toString());
+        NbtTag.NbtCompound nbt = NbtRoot.read(entity.bytes()).compound();
+        assertEquals(new NbtTag.NbtString(event.subject()), nbt.get("id").orElseThrow());
+        boolean hangs = Set.of("minecraft:item_frame", "minecraft:glow_item_frame", "minecraft:painting")
+                .contains(event.subject());
+        assertEquals(hangs, nbt.get("TileX").isPresent(), event.subject());
+        if (hangs) {
+            assertEquals(new NbtTag.NbtInt(BlockPositions.x(event.position())), nbt.get("TileX").orElseThrow());
+            assertEquals(new NbtTag.NbtInt(BlockPositions.y(event.position())), nbt.get("TileY").orElseThrow());
+            assertEquals(new NbtTag.NbtInt(BlockPositions.z(event.position())), nbt.get("TileZ").orElseThrow());
+        }
     }
 }

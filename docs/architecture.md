@@ -505,7 +505,8 @@ segments, dictionary rows and one `server` row per run.
   and die, and the world grows, flows and explodes around them. A run of at least 35 events holds every action
   and every payload kind. Items and entities are raw NBT with `DataVersion` 3955 (Minecraft 1.21.1) in 1.21.1
   component shapes, so every supported server's data fixers upgrade them; entities are the minimal
-  `{id, DataVersion}` compound `/summon` loads.
+  `{id, DataVersion}` compound `/summon` loads, and a painting or an item frame also names the block it hangs
+  at (`Pos`, `TileX`/`TileY`/`TileZ` and its facing), as a real snapshot does.
 - **Time window.** Events end `archive.settle-seconds` before the run began and reach back the asked-for days
   (30 by default, never before 2025-01-01), in non-decreasing order.
 - **Segments.** Batches of `archive.segment-events` go straight into the archive (`EventStore.writeArchived`),

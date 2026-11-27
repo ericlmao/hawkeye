@@ -324,7 +324,12 @@ public final class FakeEvents {
      */
     public @NotNull PendingEvent remove(@NotNull FakePlayer player) {
         String type = FakeContent.REMOVED_ENTITIES.pick(random);
-        return near(player, Action.ENTITY_REMOVE, type, new Payload.Entity(FakeEntities.object(type)));
+        DevWorld bounds = worlds.get(player.world());
+        int x = player.x() + random.nextInt(-3, 4);
+        int y = Math.clamp(player.y(), bounds.minY(), bounds.maxY());
+        int z = player.z() + random.nextInt(-3, 4);
+        return event(player.world(), x, y, z, player.actor(), Action.ENTITY_REMOVE, type, null, 0,
+                new Payload.Entity(FakeEntities.object(type, x, y, z, random)));
     }
 
     /**
